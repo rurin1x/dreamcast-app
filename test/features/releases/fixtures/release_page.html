@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Fallback title</title>
+    <meta property="og:image" content="https://cdn.example.test/fallback.jpg">
+    <script src="/assets/ignore.js"></script>
+    <script src="/js/playerjs-2026.js"></script>
+  </head>
+  <body>
+    <main>
+      <h3>
+        Тестовый релиз Dream Cast
+      </h3>
+      <div class="details_poster">
+        <img src="//cdn.example.test/poster.jpg" alt="">
+      </div>
+      <article class="postDesc">
+        Описание   с   лишними
+        пробелами.
+      </article>
+      <script>
+        window.addEventListener('load', function () {
+          new Playerjs("{{PLAYER_PAYLOAD}}")
+        });
+      </script>
+    </main>
+  </body>
+</html>

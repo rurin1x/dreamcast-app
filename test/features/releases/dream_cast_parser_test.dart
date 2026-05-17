@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dream_cast/core/utils/url_normalizer.dart';
 import 'package:dream_cast/features/releases/data/parsers/dream_cast_html_parser.dart';
 import 'package:dream_cast/features/releases/data/parsers/dream_stream_extractor.dart';
 import 'package:dream_cast/features/releases/data/parsers/playerjs_crypto.dart';
@@ -109,6 +110,37 @@ void main() {
       expect(streams.first.type, DreamStreamType.hls);
       expect(streams.first.quality, 1080);
       expect(streams.last.type, DreamStreamType.dash);
+    });
+  });
+
+  group('UrlNormalizer', () {
+    test('normalizeDreamCastUrl resolves absolute, relative, protocol-relative and handles encoding', () {
+      expect(normalizeDreamCastUrl(null), isNull);
+      expect(normalizeDreamCastUrl(''), isNull);
+      expect(normalizeDreamCastUrl('   '), isNull);
+
+      expect(normalizeDreamCastUrl('https://example.com/a'), 'https://example.com/a');
+      expect(normalizeDreamCastUrl('//example.com/a'), 'https://example.com/a');
+      expect(normalizeDreamCastUrl('/path/to/a'), 'https://dreamerscast.com/path/to/a');
+      expect(
+        normalizeDreamCastUrl('//example.com/Тестовый релиз'),
+        'https://example.com/%D0%A2%D0%B5%D1%81%D1%82%D0%BE%D0%B2%D1%8B%D0%B9%20%D1%80%D0%B5%D0%BB%D0%B8%D0%B7',
+      );
+    });
+
+    test('normalizeDreamCastImageUrl resolves relative images to CDN instead of main domain', () {
+      expect(normalizeDreamCastImageUrl('/releases/531/1.webp'), 'https://cache.dreamerscast.com/releases/531/1.webp');
+      expect(normalizeDreamCastImageUrl('//cache.dreamerscast.com/1.webp'), 'https://cache.dreamerscast.com/1.webp');
+      expect(normalizeDreamCastImageUrl('https://other.cdn.com/1.webp'), 'https://other.cdn.com/1.webp');
+    });
+
+    test('isValidHttpUrl rejects empty, invalid and relative, but accepts valid HTTP URLs', () {
+      expect(isValidHttpUrl(null), isFalse);
+      expect(isValidHttpUrl(''), isFalse);
+      expect(isValidHttpUrl('//example.com'), isFalse);
+      expect(isValidHttpUrl('/path'), isFalse);
+      expect(isValidHttpUrl('https://example.com'), isTrue);
+      expect(isValidHttpUrl('http://example.com'), isTrue);
     });
   });
 }

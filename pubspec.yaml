@@ -47,6 +47,7 @@ dependencies:
   animations: ^2.2.0
   collection: ^1.19.1
   html: ^0.15.6
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:

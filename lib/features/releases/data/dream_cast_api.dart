@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:dream_cast/core/errors/app_exception.dart';
 import 'package:dream_cast/core/network/dio_provider.dart';
+import 'package:dream_cast/features/releases/data/dream_cast_diagnostics.dart';
 import 'package:dream_cast/features/releases/data/dto/dream_release_dto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,10 +38,20 @@ final class DreamCastApi {
 
     final body = response.data;
     if (body is! Map) {
+      logDreamCastDiagnostic(
+        'API releases: unexpected body type=${body.runtimeType}, '
+        'status=${response.statusCode}, contentType=${response.headers.value('content-type')}',
+      );
       throw const ParserException('Сервер вернул неожиданный формат данных.');
     }
 
-    return DreamReleaseListDto.fromJson(body.cast<String, Object?>());
+    final dto = DreamReleaseListDto.fromJson(body.cast<String, Object?>());
+    logDreamCastDiagnostic(
+      'API releases: query="$query", page=$page, pageSize=$pageSize, '
+      'status=${response.statusCode}, count=${dto.count}, parsed=${dto.releases.length}, '
+      'firstImage="${dto.releases.isEmpty ? null : dto.releases.first.image}"',
+    );
+    return dto;
   }
 
   Future<String> getReleaseHtml(String url, {CancelToken? cancelToken}) async {
@@ -53,7 +64,11 @@ final class DreamCastApi {
       cancelToken: cancelToken,
     );
 
-    return response.data ?? '';
+    final html = response.data ?? '';
+    logDreamCastDiagnostic(
+      'API detail HTML: url="$url", status=${response.statusCode}, bytes=${html.length}',
+    );
+    return html;
   }
 
   Future<String> getPlayerScript(String url, {CancelToken? cancelToken}) async {
@@ -66,7 +81,11 @@ final class DreamCastApi {
       cancelToken: cancelToken,
     );
 
-    return response.data ?? '';
+    final script = response.data ?? '';
+    logDreamCastDiagnostic(
+      'API player script: url="$url", status=${response.statusCode}, bytes=${script.length}',
+    );
+    return script;
   }
 
   Future<Response<T>> _requestWithRetry<T>(
@@ -82,8 +101,17 @@ final class DreamCastApi {
       }
 
       try {
-        return await request();
+        final response = await request();
+        logDreamCastDiagnostic(
+          'HTTP ${response.requestOptions.method} ${response.requestOptions.uri} '
+          '-> ${response.statusCode}, contentType=${response.headers.value('content-type')}',
+        );
+        return response;
       } on DioException catch (error) {
+        logDreamCastDiagnostic(
+          'HTTP error attempt=$attempt/${maxAttempts}: ${error.requestOptions.method} '
+          '${error.requestOptions.uri}, type=${error.type}, status=${error.response?.statusCode}',
+        );
         if (CancelToken.isCancel(error) ||
             !_canRetry(error) ||
             attempt == maxAttempts) {
@@ -94,6 +122,9 @@ final class DreamCastApi {
             cause: error,
           );
         }
+        logDreamCastDiagnostic(
+          'Retrying request: attempt=$attempt, backing off for ${delay.inMilliseconds}ms',
+        );
         await Future<void>.delayed(delay);
         delay *= 2;
       }
@@ -120,6 +151,7 @@ final class DreamCastApi {
         statusCode == 429 ||
         statusCode == 500 ||
         statusCode == 502 ||
-        statusCode == 503;
+        statusCode == 503 ||
+        statusCode == 504;
   }
 }

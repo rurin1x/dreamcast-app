@@ -1,4 +1,5 @@
 import 'package:dream_cast/core/errors/app_exception.dart';
+import 'package:dream_cast/core/utils/url_normalizer.dart';
 import 'package:html/parser.dart' as html_parser;
 
 final class ParsedDreamReleasePage {
@@ -62,12 +63,12 @@ final class DreamCastHtmlParser {
           _normalizedText(document.querySelector('.postDesc')?.text) ??
           _metaContent(document, 'description') ??
           _metaContent(document, 'og:description'),
-      thumbnailUrl: _absoluteUrl(
+      thumbnailUrl: normalizeDreamCastImageUrl(
         document.querySelector('.details_poster img')?.attributes['src'] ??
             _metaContent(document, 'og:image'),
       ),
       playerPayload: payload,
-      playerScriptUrl: _absoluteUrl(scriptUrl)!,
+      playerScriptUrl: normalizeDreamCastUrl(scriptUrl, baseUrl: baseUrl)!,
     );
   }
 
@@ -79,13 +80,6 @@ final class DreamCastHtmlParser {
       }
     }
     return _playerScriptPattern.firstMatch(rawHtml)?.group(1);
-  }
-
-  String? _absoluteUrl(String? raw) {
-    if (raw == null || raw.trim().isEmpty) return null;
-    final value = raw.trim();
-    if (value.startsWith('//')) return 'https:$value';
-    return Uri.parse(baseUrl).resolve(value).toString();
   }
 
   static String? _firstMatch(String input, List<RegExp> patterns) {

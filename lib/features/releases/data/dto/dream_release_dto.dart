@@ -1,4 +1,5 @@
 import 'package:dream_cast/core/errors/app_exception.dart';
+import 'package:dream_cast/core/utils/url_normalizer.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
 
 final class DreamReleaseDto {
@@ -108,9 +109,9 @@ final class DreamReleaseDto {
       id: id,
       title: title,
       originalTitle: original,
-      url: Uri.parse(baseUrl).resolve(url).toString(),
-      posterUrl: image,
-      wallUrl: wallImage,
+      url: normalizeDreamCastUrl(url, baseUrl: baseUrl)!,
+      posterUrl: normalizeDreamCastImageUrl(image),
+      wallUrl: normalizeDreamCastImageUrl(wallImage),
       description: descriptionText ?? descriptionShort,
       status: statusName,
       type: type,

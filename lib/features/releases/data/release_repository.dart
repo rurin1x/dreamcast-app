@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:dream_cast/core/cache/cache_repository.dart';
 import 'package:dream_cast/core/errors/app_exception.dart';
 import 'package:dream_cast/features/releases/data/dream_cast_api.dart';
+import 'package:dream_cast/features/releases/data/dream_cast_diagnostics.dart';
 import 'package:dream_cast/features/releases/data/dream_cast_parser_service.dart';
 import 'package:dream_cast/features/releases/data/dto/dream_release_dto.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
@@ -105,6 +106,10 @@ final class ReleaseRepository {
         cancelToken: cancelToken,
       );
       final parsed = _parser.parseReleasePage(html);
+      logDreamCastDiagnostic(
+        'Repository detail parsed: id=${release.id}, title="${parsed.title}", '
+        'thumb="${parsed.thumbnailUrl}", script="${parsed.playerScriptUrl}"',
+      );
       final detail = DreamReleaseDetail(
         release: release,
         title: parsed.title,
@@ -139,6 +144,10 @@ final class ReleaseRepository {
         playerScript: script,
         encodedPayload: detail.playerPayload,
       );
+      logDreamCastDiagnostic(
+        'Repository episodes parsed: release=${detail.release.id}, count=${episodes.length}, '
+        'first="${episodes.isEmpty ? null : episodes.first.title}"',
+      );
       await _cache.putJson(cacheKey, {
         'episodes': episodes.map(_episodeToJson).toList(),
       }, ttl: detailsTtl);
@@ -157,6 +166,10 @@ final class ReleaseRepository {
     if (cached != null && !cached.isStale) return cached;
 
     final streams = _parser.extractStreams(episode);
+    logDreamCastDiagnostic(
+      'Repository streams extracted: release=${episode.releaseId}, episode=${episode.id}, '
+      'count=${streams.length}, first="${streams.isEmpty ? null : streams.first.url}"',
+    );
     if (streams.isEmpty) {
       throw const ParserException('Для серии не найдены потоки видео.');
     }
@@ -176,16 +189,30 @@ final class ReleaseRepository {
     try {
       final dto = await request();
       await _cache.putJson(cacheKey, dto.toJson(), ttl: releasesTtl);
+      final pageData = _releasePageFromDto(dto, page: page, pageSize: pageSize);
+      logReleaseSample(
+        source: 'Repository releases network page=$page',
+        releases: pageData.items,
+        totalCount: pageData.totalCount,
+        isStale: false,
+      );
       return DreamData(
-        value: _releasePageFromDto(dto, page: page, pageSize: pageSize),
+        value: pageData,
         isStale: false,
       );
     } catch (error) {
       final cached = await _cache.getJsonMap(cacheKey);
       if (cached == null) rethrow;
       final dto = DreamReleaseListDto.fromJson(cached.value);
+      final pageData = _releasePageFromDto(dto, page: page, pageSize: pageSize);
+      logReleaseSample(
+        source: 'Repository releases cache page=$page',
+        releases: pageData.items,
+        totalCount: pageData.totalCount,
+        isStale: true,
+      );
       return DreamData(
-        value: _releasePageFromDto(dto, page: page, pageSize: pageSize),
+        value: pageData,
         isStale: true,
       );
     }

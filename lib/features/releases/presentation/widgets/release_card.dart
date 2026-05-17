@@ -14,72 +14,31 @@ class ReleaseCard extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: theme.colorScheme.primary.withOpacity(0.3),
-            width: 1.5,
-          ),
-        ),
-        padding: const EdgeInsets.all(6),
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.all(4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ReleasePoster(imageUrl: release.posterUrl),
-                  Positioned(
-                    top: 4,
-                    left: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: theme.colorScheme.primary,
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        'ID: ${release.id}',
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 9,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Expanded(child: ReleasePoster(imageUrl: release.posterUrl)),
             const SizedBox(height: 6),
             Text(
               release.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
                 color: theme.colorScheme.onSurface,
                 height: 1.15,
               ),
             ),
             const SizedBox(height: 2),
             Text(
-              'Info: $_subtitle',
+              _subtitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.secondary,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontWeight: FontWeight.w500,
                 fontSize: 10,
               ),

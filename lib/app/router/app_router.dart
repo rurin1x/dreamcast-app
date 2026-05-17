@@ -2,7 +2,6 @@ import 'package:animations/animations.dart';
 import 'package:dream_cast/app/widgets/adaptive_app_shell.dart';
 import 'package:dream_cast/features/history/presentation/history_screen.dart';
 import 'package:dream_cast/features/home/presentation/home_screen.dart';
-import 'package:dream_cast/features/home/presentation/network_debug_screen.dart';
 import 'package:dream_cast/features/library/presentation/library_screen.dart';
 import 'package:dream_cast/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:dream_cast/features/onboarding/presentation/splash_screen.dart';
@@ -112,14 +111,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) =>
             _sharedAxisPage(key: state.pageKey, child: const SearchScreen()),
-      ),
-      GoRoute(
-        path: '/network-debug',
-        parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => _sharedAxisPage(
-          key: state.pageKey,
-          child: const NetworkDebugScreen(),
-        ),
       ),
       GoRoute(
         path: '/release/:id',

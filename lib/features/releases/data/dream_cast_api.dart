@@ -109,7 +109,7 @@ final class DreamCastApi {
         return response;
       } on DioException catch (error) {
         logDreamCastDiagnostic(
-          'HTTP error attempt=$attempt/${maxAttempts}: ${error.requestOptions.method} '
+          'HTTP error attempt=$attempt/$maxAttempts: ${error.requestOptions.method} '
           '${error.requestOptions.uri}, type=${error.type}, status=${error.response?.statusCode}',
         );
         if (CancelToken.isCancel(error) ||

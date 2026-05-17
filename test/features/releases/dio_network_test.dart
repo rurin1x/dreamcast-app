@@ -1,6 +1,4 @@
 import 'package:dream_cast/core/network/network_config.dart';
-import 'package:dream_cast/features/releases/data/dream_cast_api.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

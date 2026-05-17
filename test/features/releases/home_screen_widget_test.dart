@@ -1,14 +1,18 @@
+import 'package:dream_cast/app/bootstrap/dream_cast_app.dart';
 import 'package:dream_cast/features/home/presentation/home_screen.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
 import 'package:dream_cast/features/releases/presentation/release_list_providers.dart';
 import 'package:dream_cast/features/releases/presentation/release_list_state.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/release_card.dart';
+import 'package:dream_cast/features/releases/presentation/widgets/release_skeletons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakeLatestReleasesController extends LatestReleasesController {
   FakeLatestReleasesController(this._initialState);
+
   final ReleaseListState _initialState;
 
   @override
@@ -47,9 +51,17 @@ void main() {
     status: 'Завершен',
   );
 
+  late SharedPreferences preferences;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    preferences = await SharedPreferences.getInstance();
+  });
+
   Widget createTestWidget(ReleaseListState state) {
     return ProviderScope(
       overrides: [
+        sharedPreferencesProvider.overrideWithValue(preferences),
         latestReleasesProvider.overrideWith(
           () => FakeLatestReleasesController(state),
         ),
@@ -59,19 +71,16 @@ void main() {
   }
 
   group('HomeScreen Widget Tests', () {
-    testWidgets('renders loading state with skeleton and loader text', (
-      tester,
-    ) async {
+    testWidgets('renders loading state with skeleton', (tester) async {
       await tester.pumpWidget(
-        ProviderScope(child: const MaterialApp(home: HomeScreen())),
+        ProviderScope(
+          overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+          child: const MaterialApp(home: HomeScreen()),
+        ),
       );
 
-      // Verify header diagnostics is LOADING
-      expect(
-        find.textContaining('LOADING DATA FROM DREAM CAST'),
-        findsOneWidget,
-      );
-      expect(find.text('Загрузка релизов с сервера...'), findsOneWidget);
+      expect(find.byType(ReleaseGridSkeleton), findsOneWidget);
+      expect(find.textContaining('animetosho.xyz'), findsOneWidget);
     });
 
     testWidgets('renders empty state when provider returns 0 items', (
@@ -80,12 +89,13 @@ void main() {
       await tester.pumpWidget(createTestWidget(const ReleaseListState.empty()));
       await tester.pumpAndSettle();
 
-      // Verify custom Empty Container and button exist
-      expect(find.text('СПИСОК РЕЛИЗОВ ПУСТ'), findsOneWidget);
-      expect(find.text('Принудительно обновить'), findsOneWidget);
+      expect(find.text('Релизы не найдены'), findsOneWidget);
+      expect(find.text('Обновить'), findsOneWidget);
     });
 
-    testWidgets('renders populated releases in grid view', (tester) async {
+    testWidgets('renders populated releases in grid view without diagnostics', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         createTestWidget(
           const ReleaseListState(
@@ -99,23 +109,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Verify diagnostics shows 2 items
-      expect(find.textContaining('ACTIVE: Loaded 2 Releases'), findsOneWidget);
-
-      // Verify custom cards are in the tree
+      expect(find.textContaining('ACTIVE'), findsNothing);
+      expect(find.textContaining('Loaded'), findsNothing);
+      expect(find.textContaining('ID:'), findsNothing);
+      expect(find.textContaining('Info:'), findsNothing);
       expect(find.byType(ReleaseCard), findsNWidgets(2));
-
-      // Verify titles are completely visible and high-contrast
       expect(find.text('Похоже, сильнейшая профессия'), findsOneWidget);
       expect(find.text('Копэн'), findsOneWidget);
-
-      // Verify ID debug overlay badges on the cards
-      expect(find.text('ID: 101'), findsOneWidget);
-      expect(find.text('ID: 102'), findsOneWidget);
-
-      // Verify subtitle rendering custom info
-      expect(find.text('Info: 12 сер. • ТВ • 2026'), findsOneWidget);
-      expect(find.text('Info: 24 сер. • ТВ • 2025'), findsOneWidget);
+      expect(find.text('12 сер. • ТВ • 2026'), findsOneWidget);
+      expect(find.text('24 сер. • ТВ • 2025'), findsOneWidget);
     });
   });
 }

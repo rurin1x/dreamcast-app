@@ -22,6 +22,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   VideoPlayerController? _controller;
   DreamStream? _currentStream;
   Timer? _progressTimer;
+  Timer? _uiTimer;
+  Timer? _controlsHideTimer;
   bool _showControls = true;
   bool _isInitializing = true;
   Object? _error;
@@ -37,6 +39,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   @override
   void dispose() {
     _progressTimer?.cancel();
+    _uiTimer?.cancel();
+    _controlsHideTimer?.cancel();
     _controller?.removeListener(_onControllerChanged);
     _controller?.dispose();
     unawaited(_exitPlayerMode());
@@ -52,7 +56,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       body: SafeArea(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _showControls = !_showControls),
+          onTap: _toggleControlsVisibility,
           child: Stack(
             children: [
               Center(
@@ -75,10 +79,19 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                   streams: widget.request.streams,
                   currentStream: _currentStream,
                   onBack: () => Navigator.pop(context),
-                  onTogglePlay: _togglePlay,
-                  onSeekRelative: _seekRelative,
+                  onTogglePlay: () {
+                    _togglePlay();
+                    _scheduleControlsAutoHide();
+                  },
+                  onSeekRelative: (offset) {
+                    unawaited(_seekRelative(offset));
+                    _scheduleControlsAutoHide();
+                  },
                   onStreamSelected: _switchStream,
-                  onSubtitleTap: _showSubtitlePlaceholder,
+                  onSubtitleTap: () {
+                    _showSubtitlePlaceholder();
+                    _scheduleControlsAutoHide();
+                  },
                 ),
             ],
           ),
@@ -96,8 +109,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       _isInitializing = true;
       _error = null;
       _currentStream = stream;
+      _showControls = true;
     });
 
+    _uiTimer?.cancel();
+    _controlsHideTimer?.cancel();
     final old = _controller;
     old?.removeListener(_onControllerChanged);
     await old?.dispose();
@@ -138,6 +154,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       }
       await controller.play();
       _startProgressTimer();
+      _startUiTimer();
+      _scheduleControlsAutoHide();
 
       if (mounted) {
         setState(() => _isInitializing = false);
@@ -186,6 +204,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     if (controller == null || !controller.value.isInitialized) return;
     final target = controller.value.position + offset;
     await controller.seekTo(_clampDuration(target, controller.value.duration));
+    if (mounted) setState(() {});
   }
 
   Future<void> _retry() async {
@@ -198,6 +217,40 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _progressTimer?.cancel();
     _progressTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       unawaited(_saveProgress());
+    });
+  }
+
+  void _startUiTimer() {
+    _uiTimer?.cancel();
+    _uiTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      final controller = _controller;
+      if (!mounted || controller == null || !controller.value.isInitialized) {
+        return;
+      }
+      setState(() {});
+    });
+  }
+
+  void _toggleControlsVisibility() {
+    if (_showControls) {
+      _controlsHideTimer?.cancel();
+      setState(() => _showControls = false);
+      return;
+    }
+    _showControlsNow();
+  }
+
+  void _showControlsNow() {
+    if (!mounted) return;
+    setState(() => _showControls = true);
+    _scheduleControlsAutoHide();
+  }
+
+  void _scheduleControlsAutoHide() {
+    _controlsHideTimer?.cancel();
+    _controlsHideTimer = Timer(const Duration(seconds: 10), () {
+      if (!mounted) return;
+      setState(() => _showControls = false);
     });
   }
 
@@ -377,12 +430,14 @@ class _PlayerControls extends StatelessWidget {
               ),
             ),
             for (final stream in streams)
-              RadioListTile<DreamStream>(
-                value: stream,
-                groupValue: currentStream,
-                onChanged: (value) {
-                  if (value != null) onStreamSelected(value);
-                },
+              ListTile(
+                selected: stream == currentStream,
+                onTap: () => onStreamSelected(stream),
+                leading: Icon(
+                  stream == currentStream
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                ),
                 title: Text(
                   '${_streamLabel(stream.type)} • ${stream.quality}p',
                 ),

@@ -276,11 +276,6 @@ class _EpisodePreview extends StatelessWidget {
               final episodes = data.value.take(6).toList();
               return Column(
                 children: [
-                  _EpisodeDecodeDiagnostics(
-                    count: data.value.length,
-                    diagnostics: data.diagnostics,
-                    isStale: data.isStale,
-                  ),
                   if (data.isStale) const StaleCacheBanner(),
                   for (final episode in episodes)
                     _EpisodeRow(
@@ -302,57 +297,6 @@ class _EpisodePreview extends StatelessWidget {
       showDragHandle: true,
       builder: (context) =>
           _EpisodeStreamsSheet(release: detail.release, episode: episode),
-    );
-  }
-}
-
-class _EpisodeDecodeDiagnostics extends StatelessWidget {
-  const _EpisodeDecodeDiagnostics({
-    required this.count,
-    required this.diagnostics,
-    required this.isStale,
-  });
-
-  final int count;
-  final String? diagnostics;
-  final bool isStale;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final preview = diagnostics?.trim();
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Декодировано серий: $count${isStale ? ' • из кэша' : ''}',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSecondaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (preview != null && preview.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              preview,
-              maxLines: 6,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSecondaryContainer,
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

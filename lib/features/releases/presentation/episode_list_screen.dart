@@ -27,11 +27,6 @@ class EpisodeListScreen extends ConsumerWidget {
         ),
         data: (data) => Column(
           children: [
-            _EpisodeDiagnosticsBanner(
-              count: data.value.length,
-              diagnostics: data.diagnostics,
-              isStale: data.isStale,
-            ),
             if (data.isStale) const StaleCacheBanner(),
             Expanded(
               child: ListView.separated(
@@ -48,57 +43,6 @@ class EpisodeListScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _EpisodeDiagnosticsBanner extends StatelessWidget {
-  const _EpisodeDiagnosticsBanner({
-    required this.count,
-    required this.diagnostics,
-    required this.isStale,
-  });
-
-  final int count;
-  final String? diagnostics;
-  final bool isStale;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final preview = diagnostics?.trim();
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Декодировано серий: $count${isStale ? ' • из кэша' : ''}',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSecondaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (preview != null && preview.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              preview,
-              maxLines: 8,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSecondaryContainer,
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

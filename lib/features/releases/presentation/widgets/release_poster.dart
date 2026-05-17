@@ -21,7 +21,9 @@ class ReleasePoster extends StatelessWidget {
     final normalizedUrl = normalizeDreamCastImageUrl(imageUrl);
     final valid = isValidHttpUrl(normalizedUrl);
     if (imageUrl != null && imageUrl!.isNotEmpty && !valid) {
-      logDreamCastDiagnostic('Poster invalid URL: raw="$imageUrl", normalized="$normalizedUrl"');
+      logDreamCastDiagnostic(
+        'Poster invalid URL: raw="$imageUrl", normalized="$normalizedUrl"',
+      );
     }
 
     return AspectRatio(

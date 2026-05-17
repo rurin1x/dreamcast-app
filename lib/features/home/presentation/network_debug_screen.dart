@@ -20,7 +20,8 @@ class _NetworkDebugScreenState extends State<NetworkDebugScreen> {
         'User-Agent':
             'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 '
             '(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept':
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
         'Connection': 'keep-alive',
         'Referer': 'https://dreamerscast.com/',
@@ -57,13 +58,12 @@ class _NetworkDebugScreenState extends State<NetworkDebugScreen> {
         response = await _dio.post<dynamic>(
           url,
           data: data,
-          options: options ?? Options(contentType: Headers.formUrlEncodedContentType),
+          options:
+              options ??
+              Options(contentType: Headers.formUrlEncodedContentType),
         );
       } else {
-        response = await _dio.get<dynamic>(
-          url,
-          options: options,
-        );
+        response = await _dio.get<dynamic>(url, options: options);
       }
 
       stopwatch.stop();
@@ -74,8 +74,15 @@ class _NetworkDebugScreenState extends State<NetworkDebugScreen> {
         log.statusCode = response.statusCode;
         log.responseLength = response.data?.toString().length ?? 0;
         log.headers = response.headers.map;
-        log.redirects = response.redirects.map((r) => '${r.statusCode} -> ${r.location}').toList();
-        log.snippet = response.data?.toString().substring(0, response.data.toString().length > 400 ? 400 : response.data.toString().length);
+        log.redirects = response.redirects
+            .map((r) => '${r.statusCode} -> ${r.location}')
+            .toList();
+        log.snippet = response.data?.toString().substring(
+          0,
+          response.data.toString().length > 400
+              ? 400
+              : response.data.toString().length,
+        );
       });
     } on DioException catch (e) {
       stopwatch.stop();
@@ -130,18 +137,14 @@ class _NetworkDebugScreenState extends State<NetworkDebugScreen> {
       name: 'Dream Cast POST Search (Empty Query)',
       method: 'POST',
       url: 'https://dreamerscast.com/',
-      data: {
-        'search': '',
-        'pageNumber': 1,
-        'pageSize': 16,
-        'status': '',
-      },
+      data: {'search': '', 'pageNumber': 1, 'pageSize': 16, 'status': ''},
     );
 
     await _runTest(
       name: 'Dream Cast Image CDN Test',
       method: 'GET',
-      url: 'https://cache.dreamerscast.com/releases/531/79d0919c-fa60-4d9e-80cb-aa0a3086257c.webp',
+      url:
+          'https://cache.dreamerscast.com/releases/531/79d0919c-fa60-4d9e-80cb-aa0a3086257c.webp',
       options: Options(responseType: ResponseType.bytes),
     );
 
@@ -177,7 +180,9 @@ class _NetworkDebugScreenState extends State<NetworkDebugScreen> {
                   children: [
                     Text(
                       'Инструменты диагностики',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     if (_isTestingAll)
                       const SizedBox(
@@ -243,7 +248,8 @@ class _NetworkDebugScreenState extends State<NetworkDebugScreen> {
                         onPressed: () => _runTest(
                           name: 'Dream Cast Image CDN',
                           method: 'GET',
-                          url: 'https://cache.dreamerscast.com/releases/531/79d0919c-fa60-4d9e-80cb-aa0a3086257c.webp',
+                          url:
+                              'https://cache.dreamerscast.com/releases/531/79d0919c-fa60-4d9e-80cb-aa0a3086257c.webp',
                           options: Options(responseType: ResponseType.bytes),
                         ),
                       ),
@@ -349,7 +355,9 @@ class _TestLogCard extends StatelessWidget {
             Expanded(
               child: Text(
                 log.name,
-                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             Container(
@@ -386,7 +394,9 @@ class _TestLogCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Время: ${log.elapsedMs}ms • Код: ${log.statusCode ?? 'N/A'} • Длина: ${log.responseLength ?? 0}b',
-                  style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ],
@@ -409,14 +419,20 @@ class _TestLogCard extends StatelessWidget {
                   const SizedBox(height: 6),
                 ],
                 if (log.redirects != null && log.redirects!.isNotEmpty) ...[
-                  _detailRow(context, 'Цепочка редиректов', log.redirects!.join('\n')),
+                  _detailRow(
+                    context,
+                    'Цепочка редиректов',
+                    log.redirects!.join('\n'),
+                  ),
                   const SizedBox(height: 6),
                 ],
                 if (log.headers != null) ...[
                   _detailRow(
                     context,
                     'Заголовки ответа',
-                    log.headers!.entries.map((e) => '${e.key}: ${e.value.join(", ")}').join('\n'),
+                    log.headers!.entries
+                        .map((e) => '${e.key}: ${e.value.join(", ")}')
+                        .join('\n'),
                   ),
                   const SizedBox(height: 6),
                 ],
@@ -438,9 +454,9 @@ class _TestLogCard extends StatelessWidget {
         Text(
           title,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
-              ),
+            fontWeight: FontWeight.bold,
+            color: Colors.black54,
+          ),
         ),
         const SizedBox(height: 2),
         Container(

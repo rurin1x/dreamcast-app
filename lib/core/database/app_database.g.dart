@@ -1924,6 +1924,639 @@ class StreamSessionsCompanion extends UpdateCompanion<StreamSession> {
   }
 }
 
+class $WatchEntriesTable extends WatchEntries
+    with TableInfo<$WatchEntriesTable, WatchEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WatchEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _releaseIdMeta = const VerificationMeta(
+    'releaseId',
+  );
+  @override
+  late final GeneratedColumn<String> releaseId = GeneratedColumn<String>(
+    'release_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodeIdMeta = const VerificationMeta(
+    'episodeId',
+  );
+  @override
+  late final GeneratedColumn<String> episodeId = GeneratedColumn<String>(
+    'episode_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _releaseTitleMeta = const VerificationMeta(
+    'releaseTitle',
+  );
+  @override
+  late final GeneratedColumn<String> releaseTitle = GeneratedColumn<String>(
+    'release_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodeTitleMeta = const VerificationMeta(
+    'episodeTitle',
+  );
+  @override
+  late final GeneratedColumn<String> episodeTitle = GeneratedColumn<String>(
+    'episode_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _posterUrlMeta = const VerificationMeta(
+    'posterUrl',
+  );
+  @override
+  late final GeneratedColumn<String> posterUrl = GeneratedColumn<String>(
+    'poster_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _episodeOrdinalMeta = const VerificationMeta(
+    'episodeOrdinal',
+  );
+  @override
+  late final GeneratedColumn<int> episodeOrdinal = GeneratedColumn<int>(
+    'episode_ordinal',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMsMeta = const VerificationMeta(
+    'positionMs',
+  );
+  @override
+  late final GeneratedColumn<int> positionMs = GeneratedColumn<int>(
+    'position_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _durationMsMeta = const VerificationMeta(
+    'durationMs',
+  );
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+    'duration_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isWatchedMeta = const VerificationMeta(
+    'isWatched',
+  );
+  @override
+  late final GeneratedColumn<bool> isWatched = GeneratedColumn<bool>(
+    'is_watched',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_watched" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    releaseId,
+    episodeId,
+    releaseTitle,
+    episodeTitle,
+    posterUrl,
+    episodeOrdinal,
+    positionMs,
+    durationMs,
+    isWatched,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'watch_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WatchEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('release_id')) {
+      context.handle(
+        _releaseIdMeta,
+        releaseId.isAcceptableOrUnknown(data['release_id']!, _releaseIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_releaseIdMeta);
+    }
+    if (data.containsKey('episode_id')) {
+      context.handle(
+        _episodeIdMeta,
+        episodeId.isAcceptableOrUnknown(data['episode_id']!, _episodeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_episodeIdMeta);
+    }
+    if (data.containsKey('release_title')) {
+      context.handle(
+        _releaseTitleMeta,
+        releaseTitle.isAcceptableOrUnknown(
+          data['release_title']!,
+          _releaseTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_releaseTitleMeta);
+    }
+    if (data.containsKey('episode_title')) {
+      context.handle(
+        _episodeTitleMeta,
+        episodeTitle.isAcceptableOrUnknown(
+          data['episode_title']!,
+          _episodeTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_episodeTitleMeta);
+    }
+    if (data.containsKey('poster_url')) {
+      context.handle(
+        _posterUrlMeta,
+        posterUrl.isAcceptableOrUnknown(data['poster_url']!, _posterUrlMeta),
+      );
+    }
+    if (data.containsKey('episode_ordinal')) {
+      context.handle(
+        _episodeOrdinalMeta,
+        episodeOrdinal.isAcceptableOrUnknown(
+          data['episode_ordinal']!,
+          _episodeOrdinalMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_episodeOrdinalMeta);
+    }
+    if (data.containsKey('position_ms')) {
+      context.handle(
+        _positionMsMeta,
+        positionMs.isAcceptableOrUnknown(data['position_ms']!, _positionMsMeta),
+      );
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+        _durationMsMeta,
+        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
+      );
+    }
+    if (data.containsKey('is_watched')) {
+      context.handle(
+        _isWatchedMeta,
+        isWatched.isAcceptableOrUnknown(data['is_watched']!, _isWatchedMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {releaseId, episodeId};
+  @override
+  WatchEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WatchEntry(
+      releaseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}release_id'],
+      )!,
+      episodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episode_id'],
+      )!,
+      releaseTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}release_title'],
+      )!,
+      episodeTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episode_title'],
+      )!,
+      posterUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}poster_url'],
+      ),
+      episodeOrdinal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_ordinal'],
+      )!,
+      positionMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position_ms'],
+      )!,
+      durationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_ms'],
+      ),
+      isWatched: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_watched'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $WatchEntriesTable createAlias(String alias) {
+    return $WatchEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class WatchEntry extends DataClass implements Insertable<WatchEntry> {
+  final String releaseId;
+  final String episodeId;
+  final String releaseTitle;
+  final String episodeTitle;
+  final String? posterUrl;
+  final int episodeOrdinal;
+  final int positionMs;
+  final int? durationMs;
+  final bool isWatched;
+  final DateTime updatedAt;
+  const WatchEntry({
+    required this.releaseId,
+    required this.episodeId,
+    required this.releaseTitle,
+    required this.episodeTitle,
+    this.posterUrl,
+    required this.episodeOrdinal,
+    required this.positionMs,
+    this.durationMs,
+    required this.isWatched,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['release_id'] = Variable<String>(releaseId);
+    map['episode_id'] = Variable<String>(episodeId);
+    map['release_title'] = Variable<String>(releaseTitle);
+    map['episode_title'] = Variable<String>(episodeTitle);
+    if (!nullToAbsent || posterUrl != null) {
+      map['poster_url'] = Variable<String>(posterUrl);
+    }
+    map['episode_ordinal'] = Variable<int>(episodeOrdinal);
+    map['position_ms'] = Variable<int>(positionMs);
+    if (!nullToAbsent || durationMs != null) {
+      map['duration_ms'] = Variable<int>(durationMs);
+    }
+    map['is_watched'] = Variable<bool>(isWatched);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  WatchEntriesCompanion toCompanion(bool nullToAbsent) {
+    return WatchEntriesCompanion(
+      releaseId: Value(releaseId),
+      episodeId: Value(episodeId),
+      releaseTitle: Value(releaseTitle),
+      episodeTitle: Value(episodeTitle),
+      posterUrl: posterUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(posterUrl),
+      episodeOrdinal: Value(episodeOrdinal),
+      positionMs: Value(positionMs),
+      durationMs: durationMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(durationMs),
+      isWatched: Value(isWatched),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory WatchEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WatchEntry(
+      releaseId: serializer.fromJson<String>(json['releaseId']),
+      episodeId: serializer.fromJson<String>(json['episodeId']),
+      releaseTitle: serializer.fromJson<String>(json['releaseTitle']),
+      episodeTitle: serializer.fromJson<String>(json['episodeTitle']),
+      posterUrl: serializer.fromJson<String?>(json['posterUrl']),
+      episodeOrdinal: serializer.fromJson<int>(json['episodeOrdinal']),
+      positionMs: serializer.fromJson<int>(json['positionMs']),
+      durationMs: serializer.fromJson<int?>(json['durationMs']),
+      isWatched: serializer.fromJson<bool>(json['isWatched']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'releaseId': serializer.toJson<String>(releaseId),
+      'episodeId': serializer.toJson<String>(episodeId),
+      'releaseTitle': serializer.toJson<String>(releaseTitle),
+      'episodeTitle': serializer.toJson<String>(episodeTitle),
+      'posterUrl': serializer.toJson<String?>(posterUrl),
+      'episodeOrdinal': serializer.toJson<int>(episodeOrdinal),
+      'positionMs': serializer.toJson<int>(positionMs),
+      'durationMs': serializer.toJson<int?>(durationMs),
+      'isWatched': serializer.toJson<bool>(isWatched),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  WatchEntry copyWith({
+    String? releaseId,
+    String? episodeId,
+    String? releaseTitle,
+    String? episodeTitle,
+    Value<String?> posterUrl = const Value.absent(),
+    int? episodeOrdinal,
+    int? positionMs,
+    Value<int?> durationMs = const Value.absent(),
+    bool? isWatched,
+    DateTime? updatedAt,
+  }) => WatchEntry(
+    releaseId: releaseId ?? this.releaseId,
+    episodeId: episodeId ?? this.episodeId,
+    releaseTitle: releaseTitle ?? this.releaseTitle,
+    episodeTitle: episodeTitle ?? this.episodeTitle,
+    posterUrl: posterUrl.present ? posterUrl.value : this.posterUrl,
+    episodeOrdinal: episodeOrdinal ?? this.episodeOrdinal,
+    positionMs: positionMs ?? this.positionMs,
+    durationMs: durationMs.present ? durationMs.value : this.durationMs,
+    isWatched: isWatched ?? this.isWatched,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  WatchEntry copyWithCompanion(WatchEntriesCompanion data) {
+    return WatchEntry(
+      releaseId: data.releaseId.present ? data.releaseId.value : this.releaseId,
+      episodeId: data.episodeId.present ? data.episodeId.value : this.episodeId,
+      releaseTitle: data.releaseTitle.present
+          ? data.releaseTitle.value
+          : this.releaseTitle,
+      episodeTitle: data.episodeTitle.present
+          ? data.episodeTitle.value
+          : this.episodeTitle,
+      posterUrl: data.posterUrl.present ? data.posterUrl.value : this.posterUrl,
+      episodeOrdinal: data.episodeOrdinal.present
+          ? data.episodeOrdinal.value
+          : this.episodeOrdinal,
+      positionMs: data.positionMs.present
+          ? data.positionMs.value
+          : this.positionMs,
+      durationMs: data.durationMs.present
+          ? data.durationMs.value
+          : this.durationMs,
+      isWatched: data.isWatched.present ? data.isWatched.value : this.isWatched,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WatchEntry(')
+          ..write('releaseId: $releaseId, ')
+          ..write('episodeId: $episodeId, ')
+          ..write('releaseTitle: $releaseTitle, ')
+          ..write('episodeTitle: $episodeTitle, ')
+          ..write('posterUrl: $posterUrl, ')
+          ..write('episodeOrdinal: $episodeOrdinal, ')
+          ..write('positionMs: $positionMs, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('isWatched: $isWatched, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    releaseId,
+    episodeId,
+    releaseTitle,
+    episodeTitle,
+    posterUrl,
+    episodeOrdinal,
+    positionMs,
+    durationMs,
+    isWatched,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WatchEntry &&
+          other.releaseId == this.releaseId &&
+          other.episodeId == this.episodeId &&
+          other.releaseTitle == this.releaseTitle &&
+          other.episodeTitle == this.episodeTitle &&
+          other.posterUrl == this.posterUrl &&
+          other.episodeOrdinal == this.episodeOrdinal &&
+          other.positionMs == this.positionMs &&
+          other.durationMs == this.durationMs &&
+          other.isWatched == this.isWatched &&
+          other.updatedAt == this.updatedAt);
+}
+
+class WatchEntriesCompanion extends UpdateCompanion<WatchEntry> {
+  final Value<String> releaseId;
+  final Value<String> episodeId;
+  final Value<String> releaseTitle;
+  final Value<String> episodeTitle;
+  final Value<String?> posterUrl;
+  final Value<int> episodeOrdinal;
+  final Value<int> positionMs;
+  final Value<int?> durationMs;
+  final Value<bool> isWatched;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const WatchEntriesCompanion({
+    this.releaseId = const Value.absent(),
+    this.episodeId = const Value.absent(),
+    this.releaseTitle = const Value.absent(),
+    this.episodeTitle = const Value.absent(),
+    this.posterUrl = const Value.absent(),
+    this.episodeOrdinal = const Value.absent(),
+    this.positionMs = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.isWatched = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  WatchEntriesCompanion.insert({
+    required String releaseId,
+    required String episodeId,
+    required String releaseTitle,
+    required String episodeTitle,
+    this.posterUrl = const Value.absent(),
+    required int episodeOrdinal,
+    this.positionMs = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.isWatched = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : releaseId = Value(releaseId),
+       episodeId = Value(episodeId),
+       releaseTitle = Value(releaseTitle),
+       episodeTitle = Value(episodeTitle),
+       episodeOrdinal = Value(episodeOrdinal),
+       updatedAt = Value(updatedAt);
+  static Insertable<WatchEntry> custom({
+    Expression<String>? releaseId,
+    Expression<String>? episodeId,
+    Expression<String>? releaseTitle,
+    Expression<String>? episodeTitle,
+    Expression<String>? posterUrl,
+    Expression<int>? episodeOrdinal,
+    Expression<int>? positionMs,
+    Expression<int>? durationMs,
+    Expression<bool>? isWatched,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (releaseId != null) 'release_id': releaseId,
+      if (episodeId != null) 'episode_id': episodeId,
+      if (releaseTitle != null) 'release_title': releaseTitle,
+      if (episodeTitle != null) 'episode_title': episodeTitle,
+      if (posterUrl != null) 'poster_url': posterUrl,
+      if (episodeOrdinal != null) 'episode_ordinal': episodeOrdinal,
+      if (positionMs != null) 'position_ms': positionMs,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (isWatched != null) 'is_watched': isWatched,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  WatchEntriesCompanion copyWith({
+    Value<String>? releaseId,
+    Value<String>? episodeId,
+    Value<String>? releaseTitle,
+    Value<String>? episodeTitle,
+    Value<String?>? posterUrl,
+    Value<int>? episodeOrdinal,
+    Value<int>? positionMs,
+    Value<int?>? durationMs,
+    Value<bool>? isWatched,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return WatchEntriesCompanion(
+      releaseId: releaseId ?? this.releaseId,
+      episodeId: episodeId ?? this.episodeId,
+      releaseTitle: releaseTitle ?? this.releaseTitle,
+      episodeTitle: episodeTitle ?? this.episodeTitle,
+      posterUrl: posterUrl ?? this.posterUrl,
+      episodeOrdinal: episodeOrdinal ?? this.episodeOrdinal,
+      positionMs: positionMs ?? this.positionMs,
+      durationMs: durationMs ?? this.durationMs,
+      isWatched: isWatched ?? this.isWatched,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (releaseId.present) {
+      map['release_id'] = Variable<String>(releaseId.value);
+    }
+    if (episodeId.present) {
+      map['episode_id'] = Variable<String>(episodeId.value);
+    }
+    if (releaseTitle.present) {
+      map['release_title'] = Variable<String>(releaseTitle.value);
+    }
+    if (episodeTitle.present) {
+      map['episode_title'] = Variable<String>(episodeTitle.value);
+    }
+    if (posterUrl.present) {
+      map['poster_url'] = Variable<String>(posterUrl.value);
+    }
+    if (episodeOrdinal.present) {
+      map['episode_ordinal'] = Variable<int>(episodeOrdinal.value);
+    }
+    if (positionMs.present) {
+      map['position_ms'] = Variable<int>(positionMs.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (isWatched.present) {
+      map['is_watched'] = Variable<bool>(isWatched.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WatchEntriesCompanion(')
+          ..write('releaseId: $releaseId, ')
+          ..write('episodeId: $episodeId, ')
+          ..write('releaseTitle: $releaseTitle, ')
+          ..write('episodeTitle: $episodeTitle, ')
+          ..write('posterUrl: $posterUrl, ')
+          ..write('episodeOrdinal: $episodeOrdinal, ')
+          ..write('positionMs: $positionMs, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('isWatched: $isWatched, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1933,6 +2566,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlaybackPositionsTable playbackPositions =
       $PlaybackPositionsTable(this);
   late final $StreamSessionsTable streamSessions = $StreamSessionsTable(this);
+  late final $WatchEntriesTable watchEntries = $WatchEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1943,6 +2577,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     cacheEntries,
     playbackPositions,
     streamSessions,
+    watchEntries,
   ];
 }
 
@@ -2999,6 +3634,311 @@ typedef $$StreamSessionsTableProcessedTableManager =
       StreamSession,
       PrefetchHooks Function()
     >;
+typedef $$WatchEntriesTableCreateCompanionBuilder =
+    WatchEntriesCompanion Function({
+      required String releaseId,
+      required String episodeId,
+      required String releaseTitle,
+      required String episodeTitle,
+      Value<String?> posterUrl,
+      required int episodeOrdinal,
+      Value<int> positionMs,
+      Value<int?> durationMs,
+      Value<bool> isWatched,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$WatchEntriesTableUpdateCompanionBuilder =
+    WatchEntriesCompanion Function({
+      Value<String> releaseId,
+      Value<String> episodeId,
+      Value<String> releaseTitle,
+      Value<String> episodeTitle,
+      Value<String?> posterUrl,
+      Value<int> episodeOrdinal,
+      Value<int> positionMs,
+      Value<int?> durationMs,
+      Value<bool> isWatched,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$WatchEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $WatchEntriesTable> {
+  $$WatchEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get releaseId => $composableBuilder(
+    column: $table.releaseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodeId => $composableBuilder(
+    column: $table.episodeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get releaseTitle => $composableBuilder(
+    column: $table.releaseTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get posterUrl => $composableBuilder(
+    column: $table.posterUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get episodeOrdinal => $composableBuilder(
+    column: $table.episodeOrdinal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get positionMs => $composableBuilder(
+    column: $table.positionMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isWatched => $composableBuilder(
+    column: $table.isWatched,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WatchEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $WatchEntriesTable> {
+  $$WatchEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get releaseId => $composableBuilder(
+    column: $table.releaseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodeId => $composableBuilder(
+    column: $table.episodeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get releaseTitle => $composableBuilder(
+    column: $table.releaseTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get posterUrl => $composableBuilder(
+    column: $table.posterUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get episodeOrdinal => $composableBuilder(
+    column: $table.episodeOrdinal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get positionMs => $composableBuilder(
+    column: $table.positionMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isWatched => $composableBuilder(
+    column: $table.isWatched,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WatchEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WatchEntriesTable> {
+  $$WatchEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get releaseId =>
+      $composableBuilder(column: $table.releaseId, builder: (column) => column);
+
+  GeneratedColumn<String> get episodeId =>
+      $composableBuilder(column: $table.episodeId, builder: (column) => column);
+
+  GeneratedColumn<String> get releaseTitle => $composableBuilder(
+    column: $table.releaseTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get posterUrl =>
+      $composableBuilder(column: $table.posterUrl, builder: (column) => column);
+
+  GeneratedColumn<int> get episodeOrdinal => $composableBuilder(
+    column: $table.episodeOrdinal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get positionMs => $composableBuilder(
+    column: $table.positionMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isWatched =>
+      $composableBuilder(column: $table.isWatched, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$WatchEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WatchEntriesTable,
+          WatchEntry,
+          $$WatchEntriesTableFilterComposer,
+          $$WatchEntriesTableOrderingComposer,
+          $$WatchEntriesTableAnnotationComposer,
+          $$WatchEntriesTableCreateCompanionBuilder,
+          $$WatchEntriesTableUpdateCompanionBuilder,
+          (
+            WatchEntry,
+            BaseReferences<_$AppDatabase, $WatchEntriesTable, WatchEntry>,
+          ),
+          WatchEntry,
+          PrefetchHooks Function()
+        > {
+  $$WatchEntriesTableTableManager(_$AppDatabase db, $WatchEntriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WatchEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WatchEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WatchEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> releaseId = const Value.absent(),
+                Value<String> episodeId = const Value.absent(),
+                Value<String> releaseTitle = const Value.absent(),
+                Value<String> episodeTitle = const Value.absent(),
+                Value<String?> posterUrl = const Value.absent(),
+                Value<int> episodeOrdinal = const Value.absent(),
+                Value<int> positionMs = const Value.absent(),
+                Value<int?> durationMs = const Value.absent(),
+                Value<bool> isWatched = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => WatchEntriesCompanion(
+                releaseId: releaseId,
+                episodeId: episodeId,
+                releaseTitle: releaseTitle,
+                episodeTitle: episodeTitle,
+                posterUrl: posterUrl,
+                episodeOrdinal: episodeOrdinal,
+                positionMs: positionMs,
+                durationMs: durationMs,
+                isWatched: isWatched,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String releaseId,
+                required String episodeId,
+                required String releaseTitle,
+                required String episodeTitle,
+                Value<String?> posterUrl = const Value.absent(),
+                required int episodeOrdinal,
+                Value<int> positionMs = const Value.absent(),
+                Value<int?> durationMs = const Value.absent(),
+                Value<bool> isWatched = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => WatchEntriesCompanion.insert(
+                releaseId: releaseId,
+                episodeId: episodeId,
+                releaseTitle: releaseTitle,
+                episodeTitle: episodeTitle,
+                posterUrl: posterUrl,
+                episodeOrdinal: episodeOrdinal,
+                positionMs: positionMs,
+                durationMs: durationMs,
+                isWatched: isWatched,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WatchEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WatchEntriesTable,
+      WatchEntry,
+      $$WatchEntriesTableFilterComposer,
+      $$WatchEntriesTableOrderingComposer,
+      $$WatchEntriesTableAnnotationComposer,
+      $$WatchEntriesTableCreateCompanionBuilder,
+      $$WatchEntriesTableUpdateCompanionBuilder,
+      (
+        WatchEntry,
+        BaseReferences<_$AppDatabase, $WatchEntriesTable, WatchEntry>,
+      ),
+      WatchEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3013,4 +3953,6 @@ class $AppDatabaseManager {
       $$PlaybackPositionsTableTableManager(_db, _db.playbackPositions);
   $$StreamSessionsTableTableManager get streamSessions =>
       $$StreamSessionsTableTableManager(_db, _db.streamSessions);
+  $$WatchEntriesTableTableManager get watchEntries =>
+      $$WatchEntriesTableTableManager(_db, _db.watchEntries);
 }

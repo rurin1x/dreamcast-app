@@ -1,9 +1,12 @@
 import 'package:dream_cast/app/widgets/app_empty_state.dart';
 import 'package:dream_cast/app/widgets/app_error_view.dart';
+import 'package:dream_cast/features/player/data/player_providers.dart';
+import 'package:dream_cast/features/player/domain/playback_request.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
 import 'package:dream_cast/features/releases/presentation/release_list_providers.dart';
 import 'package:dream_cast/features/releases/presentation/release_list_state.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/release_card.dart';
+import 'package:dream_cast/features/releases/presentation/widgets/release_poster.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/release_skeletons.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/stale_cache_banner.dart';
 import 'package:flutter/material.dart';
@@ -62,7 +65,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               loading: () => Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Row(
                       children: [
                         const SizedBox(
@@ -73,7 +79,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         const SizedBox(width: 10),
                         Text(
                           'Загрузка релизов с сервера...',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
                                 color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -86,7 +93,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               error: (error, stackTrace) => AppErrorView(
                 error: error,
-                onRetry: () => ref.read(latestReleasesProvider.notifier).refresh(),
+                onRetry: () =>
+                    ref.read(latestReleasesProvider.notifier).refresh(),
               ),
               data: (data) {
                 if (data.items.isEmpty) {
@@ -102,7 +110,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.errorContainer,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.errorContainer,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: Theme.of(context).colorScheme.error,
@@ -113,13 +123,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 Icon(
                                   Icons.warning_amber_outlined,
                                   size: 40,
-                                  color: Theme.of(context).colorScheme.onErrorContainer,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onErrorContainer,
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
                                   'СПИСОК РЕЛИЗОВ ПУСТ',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                        color: Theme.of(context).colorScheme.onErrorContainer,
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onErrorContainer,
                                         fontWeight: FontWeight.bold,
                                       ),
                                 ),
@@ -127,8 +142,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 Text(
                                   'Провайдер успешно вернул пустой список. Возможно, кэш пуст или возникла сетевая ошибка.',
                                   textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Theme.of(context).colorScheme.onErrorContainer,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onErrorContainer,
                                       ),
                                 ),
                               ],
@@ -142,8 +160,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           message:
                               'Попробуйте обновить страницу или проверить подключение.',
                           action: FilledButton.icon(
-                            onPressed: () =>
-                                ref.read(latestReleasesProvider.notifier).refresh(),
+                            onPressed: () => ref
+                                .read(latestReleasesProvider.notifier)
+                                .refresh(),
                             icon: const Icon(Icons.refresh),
                             label: const Text('Принудительно обновить'),
                           ),
@@ -162,26 +181,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     slivers: [
                       if (data.isStale)
                         const SliverToBoxAdapter(child: StaleCacheBanner()),
-                      const SliverToBoxAdapter(child: _ContinueWatchingSection()),
+                      const SliverToBoxAdapter(
+                        child: _ContinueWatchingSectionV2(),
+                      ),
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
                           child: Text(
                             'Последние обновления',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
-                      _ReleaseSliverGrid(releases: data.items, onTap: _openRelease),
+                      _ReleaseSliverGrid(
+                        releases: data.items,
+                        onTap: _openRelease,
+                      ),
                       SliverToBoxAdapter(
                         child: _LoadMoreFooter(
                           isLoading: data.isLoadingMore,
                           error: data.loadMoreError,
                           hasMore: data.hasMore,
-                          onRetry: () =>
-                              ref.read(latestReleasesProvider.notifier).loadMore(),
+                          onRetry: () => ref
+                              .read(latestReleasesProvider.notifier)
+                              .loadMore(),
                         ),
                       ),
                     ],
@@ -337,6 +361,7 @@ class _ReleaseSliverGrid extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _ContinueWatchingSection extends StatelessWidget {
   const _ContinueWatchingSection();
 
@@ -362,6 +387,209 @@ class _ContinueWatchingSection extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ContinueWatchingSectionV2 extends ConsumerWidget {
+  const _ContinueWatchingSectionV2();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final state = ref.watch(continueWatchingProvider);
+
+    return state.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 6),
+        child: LinearProgressIndicator(),
+      ),
+      error: (error, stackTrace) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.errorContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListTile(
+            leading: const Icon(Icons.error_outline),
+            title: const Text('Не удалось загрузить прогресс'),
+            subtitle: Text(
+              '$error',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+      data: (items) {
+        if (items.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const ListTile(
+                leading: Icon(Icons.play_circle_outline),
+                title: Text('Продолжить просмотр'),
+                subtitle: Text(
+                  'Здесь появятся серии после первого запуска проигрывателя.',
+                ),
+                dense: true,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Продолжить просмотр',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 118,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: items.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 10),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return _ContinueWatchingCard(
+                      item: item,
+                      onTap: () => _resume(context, ref, item),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _resume(
+    BuildContext context,
+    WidgetRef ref,
+    ContinueWatchingItem item,
+  ) async {
+    final request = await ref
+        .read(playbackRepositoryProvider)
+        .restorePlaybackRequest(item);
+    if (!context.mounted) return;
+    if (request == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Не удалось восстановить поток. Откройте серию из карточки релиза.',
+          ),
+        ),
+      );
+      return;
+    }
+    context.push('/watch', extra: request);
+  }
+}
+
+class _ContinueWatchingCard extends StatelessWidget {
+  const _ContinueWatchingCard({required this.item, required this.onTap});
+
+  final ContinueWatchingItem item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final progress = item.progress;
+
+    return SizedBox(
+      width: 268,
+      child: Material(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 58,
+                  child: ReleasePoster(
+                    imageUrl: item.posterUrl,
+                    borderRadius: 8,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.releaseTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          height: 1.1,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${item.episodeOrdinal} серия • ${_formatPosition(item.position)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (progress != null)
+                        LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 3,
+                          borderRadius: BorderRadius.circular(99),
+                        )
+                      else
+                        Text(
+                          'Прогресс сохранён',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.play_arrow),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatPosition(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 }
 

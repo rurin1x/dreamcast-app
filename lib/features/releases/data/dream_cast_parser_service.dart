@@ -29,6 +29,16 @@ final class DreamCastParserService {
     );
   }
 
+  PlayerJsDecodeResult decodePlaylistWithDiagnostics({
+    required String playerScript,
+    required String encodedPayload,
+  }) {
+    return playlistDecoder.decodeWithDiagnostics(
+      playerScript: playerScript,
+      encodedPayload: encodedPayload,
+    );
+  }
+
   List<DreamEpisode> extractEpisodes({
     required int releaseId,
     required String playerScript,
@@ -40,7 +50,52 @@ final class DreamCastParserService {
     ).toEpisodes(releaseId);
   }
 
+  DreamEpisodeExtractionResult extractEpisodesWithDiagnostics({
+    required int releaseId,
+    required String playerScript,
+    required String encodedPayload,
+  }) {
+    final decoded = decodePlaylistWithDiagnostics(
+      playerScript: playerScript,
+      encodedPayload: encodedPayload,
+    );
+    final episodes = decoded.playlist.toEpisodes(releaseId);
+    final emptyFiles = episodes
+        .where((episode) => episode.file.trim().isEmpty)
+        .length;
+    final diagnostics = StringBuffer(decoded.diagnostics)
+      ..writeln('mapped.episodes=${episodes.length}')
+      ..writeln('mapped.emptyFileEpisodes=$emptyFiles')
+      ..writeln(
+        'mapped.first="${episodes.isEmpty ? '' : '${episodes.first.ordinal}: ${episodes.first.title}'}"',
+      )
+      ..writeln(
+        'mapped.first.file="${episodes.isEmpty ? '' : _snippet(episodes.first.file)}"',
+      );
+
+    return DreamEpisodeExtractionResult(
+      episodes: episodes,
+      diagnostics: diagnostics.toString(),
+    );
+  }
+
   List<DreamStream> extractStreams(DreamEpisode episode) {
     return streamExtractor.extract(episode);
   }
+}
+
+final class DreamEpisodeExtractionResult {
+  const DreamEpisodeExtractionResult({
+    required this.episodes,
+    required this.diagnostics,
+  });
+
+  final List<DreamEpisode> episodes;
+  final String diagnostics;
+}
+
+String _snippet(String value, {int max = 500}) {
+  final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (normalized.length <= max) return normalized;
+  return '${normalized.substring(0, max)}...';
 }

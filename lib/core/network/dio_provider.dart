@@ -70,9 +70,11 @@ final class _LoggingInterceptor extends Interceptor {
     sw?.stop();
     final durationMs = sw?.elapsedMilliseconds ?? -1;
 
-    _log.fine('✅ RESPONSE SUCCESS: status=${response.statusCode} (${durationMs}ms) '
-        '${response.requestOptions.method} ${response.requestOptions.uri}');
-    
+    _log.fine(
+      '✅ RESPONSE SUCCESS: status=${response.statusCode} (${durationMs}ms) '
+      '${response.requestOptions.method} ${response.requestOptions.uri}',
+    );
+
     final redirects = response.redirects;
     if (redirects.isNotEmpty) {
       _log.fine('Redirect chain:');
@@ -81,7 +83,7 @@ final class _LoggingInterceptor extends Interceptor {
         _log.fine('  [$i] ${r.statusCode} -> ${r.location}');
       }
     }
-    
+
     handler.next(response);
   }
 
@@ -98,8 +100,10 @@ final class _LoggingInterceptor extends Interceptor {
       _ => 'OTHER_ERROR',
     };
 
-    _log.warning('❌ RESPONSE ERROR: type=${err.type} (stage=$timeoutStage) status=${err.response?.statusCode} (${durationMs}ms) '
-        '${err.requestOptions.method} ${err.requestOptions.uri}');
+    _log.warning(
+      '❌ RESPONSE ERROR: type=${err.type} (stage=$timeoutStage) status=${err.response?.statusCode} (${durationMs}ms) '
+      '${err.requestOptions.method} ${err.requestOptions.uri}',
+    );
     _log.warning('Error details: ${err.message}');
 
     handler.next(err);

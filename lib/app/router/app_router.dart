@@ -6,7 +6,9 @@ import 'package:dream_cast/features/home/presentation/network_debug_screen.dart'
 import 'package:dream_cast/features/library/presentation/library_screen.dart';
 import 'package:dream_cast/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:dream_cast/features/onboarding/presentation/splash_screen.dart';
+import 'package:dream_cast/features/player/domain/playback_request.dart';
 import 'package:dream_cast/features/player/presentation/player_placeholder_screen.dart';
+import 'package:dream_cast/features/player/presentation/video_player_screen.dart';
 import 'package:dream_cast/features/profile/presentation/profile_screen.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
 import 'package:dream_cast/features/releases/presentation/episode_list_screen.dart';
@@ -141,6 +143,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             key: state.pageKey,
             child: detail is DreamReleaseDetail
                 ? EpisodeListScreen(detail: detail)
+                : const _MissingRouteDataScreen(),
+          );
+        },
+      ),
+      GoRoute(
+        path: '/watch',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) {
+          final request = state.extra;
+          return _sharedAxisPage(
+            key: state.pageKey,
+            child: request is PlaybackRequest
+                ? VideoPlayerScreen(request: request)
                 : const _MissingRouteDataScreen(),
           );
         },

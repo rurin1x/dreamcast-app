@@ -50,33 +50,34 @@ void main() {
   Widget createTestWidget(ReleaseListState state) {
     return ProviderScope(
       overrides: [
-        latestReleasesProvider.overrideWith(() => FakeLatestReleasesController(state)),
+        latestReleasesProvider.overrideWith(
+          () => FakeLatestReleasesController(state),
+        ),
       ],
-      child: const MaterialApp(
-        home: HomeScreen(),
-      ),
+      child: const MaterialApp(home: HomeScreen()),
     );
   }
 
   group('HomeScreen Widget Tests', () {
-    testWidgets('renders loading state with skeleton and loader text', (tester) async {
+    testWidgets('renders loading state with skeleton and loader text', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        ProviderScope(
-          child: const MaterialApp(
-            home: HomeScreen(),
-          ),
-        ),
+        ProviderScope(child: const MaterialApp(home: HomeScreen())),
       );
 
       // Verify header diagnostics is LOADING
-      expect(find.textContaining('LOADING DATA FROM DREAM CAST'), findsOneWidget);
+      expect(
+        find.textContaining('LOADING DATA FROM DREAM CAST'),
+        findsOneWidget,
+      );
       expect(find.text('Загрузка релизов с сервера...'), findsOneWidget);
     });
 
-    testWidgets('renders empty state when provider returns 0 items', (tester) async {
-      await tester.pumpWidget(
-        createTestWidget(const ReleaseListState.empty()),
-      );
+    testWidgets('renders empty state when provider returns 0 items', (
+      tester,
+    ) async {
+      await tester.pumpWidget(createTestWidget(const ReleaseListState.empty()));
       await tester.pumpAndSettle();
 
       // Verify custom Empty Container and button exist

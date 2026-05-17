@@ -29,12 +29,29 @@ final releaseDetailProvider = FutureProvider.autoDispose
     });
 
 final releaseEpisodesProvider = FutureProvider.autoDispose
-    .family<DreamData<List<DreamEpisode>>, DreamReleaseDetail>((ref, detail) {
+    .family<DreamData<List<DreamEpisode>>, DreamReleaseDetail>((
+      ref,
+      detail,
+    ) async {
       final cancelToken = CancelToken();
       ref.onDispose(cancelToken.cancel);
-      return ref
-          .watch(releaseRepositoryProvider)
-          .getEpisodes(detail, cancelToken: cancelToken);
+      try {
+        final data = await ref
+            .watch(releaseRepositoryProvider)
+            .getEpisodes(detail, cancelToken: cancelToken);
+        logDreamCastDiagnostic(
+          'Provider episodes emitted: release=${detail.release.id}, '
+          'count=${data.value.length}, stale=${data.isStale}, '
+          'diagnostics="${_snippet(data.diagnostics ?? '')}"',
+        );
+        return data;
+      } catch (error, stackTrace) {
+        logDreamCastDiagnostic(
+          'Provider episodes failed: release=${detail.release.id}, '
+          'errorType=${error.runtimeType}, error=$error, stackTrace=$stackTrace',
+        );
+        rethrow;
+      }
     });
 
 final episodeStreamsProvider = FutureProvider.autoDispose
@@ -268,4 +285,10 @@ extension AsyncValueCompat<T> on AsyncValue<T> {
     AsyncData(:final value) => value,
     _ => null,
   };
+}
+
+String _snippet(String value, {int max = 300}) {
+  final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (normalized.length <= max) return normalized;
+  return '${normalized.substring(0, max)}...';
 }

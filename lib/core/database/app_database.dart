@@ -64,6 +64,22 @@ class StreamSessions extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+class WatchEntries extends Table {
+  TextColumn get releaseId => text()();
+  TextColumn get episodeId => text()();
+  TextColumn get releaseTitle => text()();
+  TextColumn get episodeTitle => text()();
+  TextColumn get posterUrl => text().nullable()();
+  IntColumn get episodeOrdinal => integer()();
+  IntColumn get positionMs => integer().withDefault(const Constant(0))();
+  IntColumn get durationMs => integer().nullable()();
+  BoolColumn get isWatched => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {releaseId, episodeId};
+}
+
 @DriftDatabase(
   tables: [
     Profiles,
@@ -71,13 +87,23 @@ class StreamSessions extends Table {
     CacheEntries,
     PlaybackPositions,
     StreamSessions,
+    WatchEntries,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.createTable(watchEntries);
+      }
+    },
+  );
 
   Future<Profile?> activeProfile() {
     return (select(
@@ -122,8 +148,45 @@ class AppDatabase extends _$AppDatabase {
     return into(playbackPositions).insertOnConflictUpdate(position);
   }
 
+  Future<PlaybackPosition?> playbackPosition(
+    String releaseId,
+    String episodeId,
+  ) {
+    return (select(playbackPositions)..where(
+          (row) =>
+              row.releaseId.equals(releaseId) & row.episodeId.equals(episodeId),
+        ))
+        .getSingleOrNull();
+  }
+
   Future<void> saveStreamSession(StreamSessionsCompanion session) {
     return into(streamSessions).insertOnConflictUpdate(session);
+  }
+
+  Future<StreamSession?> latestStreamSession(
+    String releaseId,
+    String episodeId,
+  ) {
+    return (select(streamSessions)
+          ..where(
+            (row) =>
+                row.releaseId.equals(releaseId) &
+                row.episodeId.equals(episodeId),
+          )
+          ..orderBy([(row) => OrderingTerm.desc(row.createdAt)])
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<void> upsertWatchEntry(WatchEntriesCompanion entry) {
+    return into(watchEntries).insertOnConflictUpdate(entry);
+  }
+
+  Stream<List<WatchEntry>> watchRecentEntries({int limit = 12}) {
+    return (select(watchEntries)
+          ..orderBy([(row) => OrderingTerm.desc(row.updatedAt)])
+          ..limit(limit))
+        .watch();
   }
 }
 

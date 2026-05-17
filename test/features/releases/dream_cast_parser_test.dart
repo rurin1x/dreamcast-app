@@ -41,6 +41,105 @@ void main() {
   });
 
   group('PlayerJsPlaylistDecoder', () {
+    test('decodes newer #2 direct base64 JSON playlist', () {
+      final playlistJson = jsonEncode({
+        'id': 'player',
+        'file': [
+          {
+            'label': '540',
+            'title': 'Серия 1',
+            'file':
+                'https://play.dreamerscast.com/dash/show/manifest.mpd or https://play.dreamerscast.com/hls/show/master.m3u8',
+            'thumbnails': 'https://cache.dreamerscast.com/media/thumbnails.vtt',
+            'embed': 'https://player.dreamerscast.com/embed/show',
+            'id': 'playlist_1',
+            'vars': {'vlc': '0'},
+          },
+          {
+            'label': '540',
+            'title': 'Серия 2',
+            'file':
+                'https://play.dreamerscast.com/dash/show-2/manifest.mpd or https://play.dreamerscast.com/hls/show-2/master.m3u8',
+            'id': 'playlist_2',
+            'vars': {'vlc': '1'},
+          },
+        ],
+      });
+      final encodedPayload = '#2${base64EncodeUrlComponent(playlistJson)}';
+
+      final result = const PlayerJsPlaylistDecoder().decodeWithDiagnostics(
+        playerScript: 'not used by #2 direct payload',
+        encodedPayload: encodedPayload,
+      );
+      final episodes = result.playlist.toEpisodes(540);
+      final streams = const DreamStreamExtractor().extract(episodes.first);
+
+      expect(result.diagnostics, contains('decode.mode=direct-base64-json'));
+      expect(result.diagnostics, contains('playlist.file.count=2'));
+      expect(episodes, hasLength(2));
+      expect(episodes.first.title, 'Серия 1');
+      expect(episodes.first.file, contains('manifest.mpd'));
+      expect(episodes.first.file, contains('master.m3u8'));
+      expect(
+        streams.map((stream) => stream.type),
+        contains(DreamStreamType.dash),
+      );
+      expect(
+        streams.map((stream) => stream.type),
+        contains(DreamStreamType.hls),
+      );
+    });
+
+    test('decodes #2 playlist with PlayerJS bk key insertions', () {
+      final crypto = const PlayerJsCrypto();
+      final keysJson = jsonEncode({
+        'bk0': 'alpha',
+        'bk1': 'beta',
+        'bk2': '',
+        'bk3': 'undefined',
+        'bk4': null,
+      });
+      final cryptCode = '#0${crypto.saltEncodeForTests(keysJson)}';
+      final playerScript = _fixture(
+        'playerjs_direct.js',
+      ).replaceAll('{{CRYPT_CODE}}', cryptCode);
+      final playlistJson = jsonEncode({
+        'id': 'player',
+        'file': [
+          {
+            'label': '540',
+            'title': 'Серия 1',
+            'file':
+                'https://play.dreamerscast.com/dash/show/manifest.mpd or https://play.dreamerscast.com/hls/show/master.m3u8',
+            'id': 'playlist_1',
+            'vars': {'vlc': '0'},
+          },
+        ],
+      });
+      final encodedJson = base64EncodeUrlComponent(playlistJson);
+      final encodedPayload =
+          '#2${encodedJson.substring(0, 36)}//${base64EncodeUrlComponent('alpha')}'
+          '${encodedJson.substring(36, 92)}//${base64EncodeUrlComponent('beta')}'
+          '${encodedJson.substring(92)}';
+
+      final result = const PlayerJsPlaylistDecoder().decodeWithDiagnostics(
+        playerScript: playerScript,
+        encodedPayload: encodedPayload,
+      );
+      final episodes = result.playlist.toEpisodes(540);
+
+      expect(result.diagnostics, contains('decode.mode=direct-base64-json'));
+      expect(
+        result.diagnostics,
+        contains('directDecode.cleaningWithPlayerKeys=true'),
+      );
+      expect(result.diagnostics, contains('direct.cleaned.bk0.removed=true'));
+      expect(result.diagnostics, contains('direct.cleaned.bk1.removed=true'));
+      expect(episodes, hasLength(1));
+      expect(episodes.first.file, contains('manifest.mpd'));
+      expect(episodes.first.file, contains('master.m3u8'));
+    });
+
     test('decodes playlist and preserves episode metadata', () {
       final crypto = const PlayerJsCrypto();
       final keysJson = jsonEncode({
@@ -114,34 +213,61 @@ void main() {
   });
 
   group('UrlNormalizer', () {
-    test('normalizeDreamCastUrl resolves absolute, relative, protocol-relative and handles encoding', () {
-      expect(normalizeDreamCastUrl(null), isNull);
-      expect(normalizeDreamCastUrl(''), isNull);
-      expect(normalizeDreamCastUrl('   '), isNull);
+    test(
+      'normalizeDreamCastUrl resolves absolute, relative, protocol-relative and handles encoding',
+      () {
+        expect(normalizeDreamCastUrl(null), isNull);
+        expect(normalizeDreamCastUrl(''), isNull);
+        expect(normalizeDreamCastUrl('   '), isNull);
 
-      expect(normalizeDreamCastUrl('https://example.com/a'), 'https://example.com/a');
-      expect(normalizeDreamCastUrl('//example.com/a'), 'https://example.com/a');
-      expect(normalizeDreamCastUrl('/path/to/a'), 'https://dreamerscast.com/path/to/a');
-      expect(
-        normalizeDreamCastUrl('//example.com/Тестовый релиз'),
-        'https://example.com/%D0%A2%D0%B5%D1%81%D1%82%D0%BE%D0%B2%D1%8B%D0%B9%20%D1%80%D0%B5%D0%BB%D0%B8%D0%B7',
-      );
-    });
+        expect(
+          normalizeDreamCastUrl('https://example.com/a'),
+          'https://example.com/a',
+        );
+        expect(
+          normalizeDreamCastUrl('//example.com/a'),
+          'https://example.com/a',
+        );
+        expect(
+          normalizeDreamCastUrl('/path/to/a'),
+          'https://dreamerscast.com/path/to/a',
+        );
+        expect(
+          normalizeDreamCastUrl('//example.com/Тестовый релиз'),
+          'https://example.com/%D0%A2%D0%B5%D1%81%D1%82%D0%BE%D0%B2%D1%8B%D0%B9%20%D1%80%D0%B5%D0%BB%D0%B8%D0%B7',
+        );
+      },
+    );
 
-    test('normalizeDreamCastImageUrl resolves relative images to CDN instead of main domain', () {
-      expect(normalizeDreamCastImageUrl('/releases/531/1.webp'), 'https://cache.dreamerscast.com/releases/531/1.webp');
-      expect(normalizeDreamCastImageUrl('//cache.dreamerscast.com/1.webp'), 'https://cache.dreamerscast.com/1.webp');
-      expect(normalizeDreamCastImageUrl('https://other.cdn.com/1.webp'), 'https://other.cdn.com/1.webp');
-    });
+    test(
+      'normalizeDreamCastImageUrl resolves relative images to CDN instead of main domain',
+      () {
+        expect(
+          normalizeDreamCastImageUrl('/releases/531/1.webp'),
+          'https://cache.dreamerscast.com/releases/531/1.webp',
+        );
+        expect(
+          normalizeDreamCastImageUrl('//cache.dreamerscast.com/1.webp'),
+          'https://cache.dreamerscast.com/1.webp',
+        );
+        expect(
+          normalizeDreamCastImageUrl('https://other.cdn.com/1.webp'),
+          'https://other.cdn.com/1.webp',
+        );
+      },
+    );
 
-    test('isValidHttpUrl rejects empty, invalid and relative, but accepts valid HTTP URLs', () {
-      expect(isValidHttpUrl(null), isFalse);
-      expect(isValidHttpUrl(''), isFalse);
-      expect(isValidHttpUrl('//example.com'), isFalse);
-      expect(isValidHttpUrl('/path'), isFalse);
-      expect(isValidHttpUrl('https://example.com'), isTrue);
-      expect(isValidHttpUrl('http://example.com'), isTrue);
-    });
+    test(
+      'isValidHttpUrl rejects empty, invalid and relative, but accepts valid HTTP URLs',
+      () {
+        expect(isValidHttpUrl(null), isFalse);
+        expect(isValidHttpUrl(''), isFalse);
+        expect(isValidHttpUrl('//example.com'), isFalse);
+        expect(isValidHttpUrl('/path'), isFalse);
+        expect(isValidHttpUrl('https://example.com'), isTrue);
+        expect(isValidHttpUrl('http://example.com'), isTrue);
+      },
+    );
   });
 }
 

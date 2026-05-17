@@ -8,10 +8,15 @@ import 'package:dream_cast/features/releases/data/dto/dream_release_dto.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
 
 final class DreamData<T> {
-  const DreamData({required this.value, required this.isStale});
+  const DreamData({
+    required this.value,
+    required this.isStale,
+    this.diagnostics,
+  });
 
   final T value;
   final bool isStale;
+  final String? diagnostics;
 }
 
 final class ReleaseRepository {
@@ -108,7 +113,8 @@ final class ReleaseRepository {
       final parsed = _parser.parseReleasePage(html);
       logDreamCastDiagnostic(
         'Repository detail parsed: id=${release.id}, title="${parsed.title}", '
-        'thumb="${parsed.thumbnailUrl}", script="${parsed.playerScriptUrl}"',
+        'thumb="${parsed.thumbnailUrl}", script="${parsed.playerScriptUrl}", '
+        'payloadLength=${parsed.playerPayload.length}, payloadPreview="${_snippet(parsed.playerPayload)}"',
       );
       final detail = DreamReleaseDetail(
         release: release,
@@ -121,7 +127,11 @@ final class ReleaseRepository {
       );
       await _cache.putJson(cacheKey, _detailToJson(detail), ttl: detailsTtl);
       return DreamData(value: detail, isStale: false);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      logDreamCastDiagnostic(
+        'Repository detail parse failed: release=${release.id}, '
+        'errorType=${error.runtimeType}, error=$error, stackTrace=$stackTrace',
+      );
       final cached = await _detailFromCache(cacheKey, release);
       if (cached != null) return cached;
       rethrow;
@@ -139,22 +149,52 @@ final class ReleaseRepository {
         detail.playerScriptUrl,
         cancelToken: cancelToken,
       );
-      final episodes = _parser.extractEpisodes(
+      logDreamCastDiagnostic(
+        'Repository episodes decode start: release=${detail.release.id}, '
+        'payloadLength=${detail.playerPayload.length}, payloadPreview="${_snippet(detail.playerPayload)}", '
+        'scriptLength=${script.length}, scriptPreview="${_snippet(script)}"',
+      );
+      final result = _parser.extractEpisodesWithDiagnostics(
         releaseId: detail.release.id,
         playerScript: script,
         encodedPayload: detail.playerPayload,
       );
+      final episodes = result.episodes;
       logDreamCastDiagnostic(
         'Repository episodes parsed: release=${detail.release.id}, count=${episodes.length}, '
-        'first="${episodes.isEmpty ? null : episodes.first.title}"',
+        'first="${episodes.isEmpty ? null : episodes.first.title}", '
+        'diagnostics=${result.diagnostics}',
       );
       await _cache.putJson(cacheKey, {
         'episodes': episodes.map(_episodeToJson).toList(),
+        'diagnostics': result.diagnostics,
       }, ttl: detailsTtl);
-      return DreamData(value: episodes, isStale: false);
-    } catch (error) {
+      return DreamData(
+        value: episodes,
+        isStale: false,
+        diagnostics: result.diagnostics,
+      );
+    } catch (error, stackTrace) {
+      logDreamCastDiagnostic(
+        'Repository episodes failed: release=${detail.release.id}, '
+        'errorType=${error.runtimeType}, error=$error, stackTrace=$stackTrace, '
+        'payloadSnippet="${_snippet(detail.playerPayload)}"',
+      );
       final cached = await _episodesFromCache(cacheKey);
-      if (cached != null) return cached;
+      if (cached != null) {
+        logDreamCastDiagnostic(
+          'Repository episodes returning stale cache after failure: '
+          'release=${detail.release.id}, cachedCount=${cached.value.length}',
+        );
+        return DreamData(
+          value: cached.value,
+          isStale: true,
+          diagnostics:
+              'Ошибка свежего декодирования: ${error.runtimeType}: $error\n'
+              'Возвращён кэш: ${cached.value.length} серий.\n'
+              '${cached.diagnostics ?? ''}',
+        );
+      }
       rethrow;
     }
   }
@@ -196,10 +236,7 @@ final class ReleaseRepository {
         totalCount: pageData.totalCount,
         isStale: false,
       );
-      return DreamData(
-        value: pageData,
-        isStale: false,
-      );
+      return DreamData(value: pageData, isStale: false);
     } catch (error) {
       final cached = await _cache.getJsonMap(cacheKey);
       if (cached == null) rethrow;
@@ -211,10 +248,7 @@ final class ReleaseRepository {
         totalCount: pageData.totalCount,
         isStale: true,
       );
-      return DreamData(
-        value: pageData,
-        isStale: true,
-      );
+      return DreamData(value: pageData, isStale: true);
     }
   }
 
@@ -258,6 +292,7 @@ final class ReleaseRepository {
           .map((item) => _episodeFromJson(item.cast<String, Object?>()))
           .toList(growable: false),
       isStale: true,
+      diagnostics: cached.value['diagnostics'] as String?,
     );
   }
 
@@ -369,4 +404,10 @@ final class ReleaseRepository {
       expiresAt: DateTime.tryParse(json['expiresAt'] as String? ?? ''),
     );
   }
+}
+
+String _snippet(String value, {int max = 500}) {
+  final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (normalized.length <= max) return normalized;
+  return '${normalized.substring(0, max)}...';
 }

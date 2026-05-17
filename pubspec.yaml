@@ -48,6 +48,8 @@ dependencies:
   collection: ^1.19.1
   html: ^0.15.6
   cached_network_image: ^3.4.1
+  video_player: ^2.11.1
+  wakelock_plus: ^1.6.1
 
 dev_dependencies:
   flutter_test:

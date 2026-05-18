@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show FontFeature, ImageFilter;
 
 import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/data/stream_preference_providers.dart';
@@ -72,71 +73,54 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        body: SafeArea(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _toggleControlsVisibility,
-            onDoubleTapDown: _handleDoubleTapSeek,
-            child: Stack(
-              children: [
-                Center(
-                  child: _error != null
-                      ? _PlayerError(error: _error!, onRetry: _retry)
-                      : _isInitializing ||
-                            controller == null ||
-                            !controller.value.isInitialized
-                      ? const CircularProgressIndicator()
-                      : AspectRatio(
-                          aspectRatio: controller.value.aspectRatio,
-                          child: VideoPlayer(controller),
-                        ),
-                ),
-                if (_seekFeedbackText != null)
-                  Align(
-                    alignment: _seekFeedbackAlignment,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 42),
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.62),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          child: Text(
-                            _seekFeedbackText!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
+        body: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggleControlsVisibility,
+          onDoubleTapDown: _handleDoubleTapSeek,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(
+                child: _error != null
+                    ? _PlayerError(error: _error!, onRetry: _retry)
+                    : _isInitializing ||
+                          controller == null ||
+                          !controller.value.isInitialized
+                    ? const _PlayerLoading()
+                    : AspectRatio(
+                        aspectRatio: controller.value.aspectRatio,
+                        child: VideoPlayer(controller),
                       ),
-                    ),
-                  ),
-                if (_showControls && controller != null)
-                  _PlayerControls(
-                    controller: controller,
-                    title: _request.episode.title,
-                    subtitle: displayReleaseTitle(_request.release),
-                    streams: _request.streams,
-                    currentStream: _currentStream,
-                    onBack: _closePlayer,
-                    onTogglePlay: () {
-                      _togglePlay();
-                      _scheduleControlsAutoHide();
-                    },
-                    onSeekRelative: (offset) {
-                      unawaited(_seekRelative(offset));
-                      _scheduleControlsAutoHide();
-                    },
-                    onStreamSelected: _switchStream,
-                  ),
-              ],
-            ),
+              ),
+              if (_seekFeedbackText != null)
+                _SeekFeedback(
+                  text: _seekFeedbackText!,
+                  alignment: _seekFeedbackAlignment,
+                ),
+              if (controller != null)
+                _PlayerControls(
+                  visible: _showControls,
+                  controller: controller,
+                  title: _request.episode.title,
+                  subtitle: displayReleaseTitle(_request.release),
+                  streams: _request.streams,
+                  currentStream: _currentStream,
+                  onBack: _closePlayer,
+                  onTogglePlay: () {
+                    _togglePlay();
+                    _scheduleControlsAutoHide();
+                  },
+                  onSeek: (position) {
+                    unawaited(_seekTo(position));
+                    _scheduleControlsAutoHide();
+                  },
+                  onSeekRelative: (offset) {
+                    unawaited(_seekRelative(offset));
+                    _scheduleControlsAutoHide();
+                  },
+                  onStreamSelected: _switchStream,
+                ),
+            ],
           ),
         ),
       ),
@@ -251,6 +235,15 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     if (controller == null || !controller.value.isInitialized) return;
     controller.value.isPlaying ? controller.pause() : controller.play();
     setState(() {});
+  }
+
+  Future<void> _seekTo(Duration position) async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+    await controller.seekTo(
+      _clampDuration(position, controller.value.duration),
+    );
+    if (mounted) setState(() {});
   }
 
   Future<void> _seekRelative(Duration offset) async {
@@ -483,6 +476,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
 class _PlayerControls extends StatelessWidget {
   const _PlayerControls({
+    required this.visible,
     required this.controller,
     required this.title,
     required this.subtitle,
@@ -490,10 +484,12 @@ class _PlayerControls extends StatelessWidget {
     required this.currentStream,
     required this.onBack,
     required this.onTogglePlay,
+    required this.onSeek,
     required this.onSeekRelative,
     required this.onStreamSelected,
   });
 
+  final bool visible;
   final VideoPlayerController controller;
   final String title;
   final String subtitle;
@@ -501,89 +497,79 @@ class _PlayerControls extends StatelessWidget {
   final DreamStream? currentStream;
   final VoidCallback onBack;
   final VoidCallback onTogglePlay;
+  final ValueChanged<Duration> onSeek;
   final ValueChanged<Duration> onSeekRelative;
   final ValueChanged<DreamStream> onStreamSelected;
 
   @override
   Widget build(BuildContext context) {
     final value = controller.value;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final size = MediaQuery.sizeOf(context);
+    final compact = size.width < 640 || size.height < 420;
+    final horizontalPadding = compact ? 12.0 : 28.0;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.black.withValues(alpha: 0.72),
-            Colors.transparent,
-            Colors.black.withValues(alpha: 0.78),
-          ],
-        ),
-      ),
-      child: Column(
-        children: [
-          _TopBar(
-            title: title,
-            subtitle: subtitle,
-            onBack: onBack,
-            onQualityTap: () => _showQualitySheet(context),
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.58),
+                Colors.black.withValues(alpha: 0.08),
+                Colors.black.withValues(alpha: 0.64),
+              ],
+              stops: const [0, 0.48, 1],
+            ),
           ),
-          const Spacer(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton.filledTonal(
-                tooltip: 'Назад на 10 секунд',
-                onPressed: () => onSeekRelative(const Duration(seconds: -10)),
-                icon: const Icon(Icons.replay_10),
-              ),
-              const SizedBox(width: 22),
-              IconButton.filled(
-                tooltip: value.isPlaying ? 'Пауза' : 'Воспроизвести',
-                iconSize: 38,
-                onPressed: onTogglePlay,
-                icon: Icon(value.isPlaying ? Icons.pause : Icons.play_arrow),
-              ),
-              const SizedBox(width: 22),
-              IconButton.filledTonal(
-                tooltip: 'Вперёд на 10 секунд',
-                onPressed: () => onSeekRelative(const Duration(seconds: 10)),
-                icon: const Icon(Icons.forward_10),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 14),
+          child: SafeArea(
+            minimum: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              compact ? 8 : 12,
+              horizontalPadding,
+              compact ? 8 : 14,
+            ),
             child: Column(
               children: [
-                VideoProgressIndicator(
-                  controller,
-                  allowScrubbing: true,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  colors: const VideoProgressColors(
-                    playedColor: Colors.white,
-                    bufferedColor: Colors.white38,
-                    backgroundColor: Colors.white24,
+                _TopBar(
+                  title: title,
+                  subtitle: subtitle,
+                  compact: compact,
+                  currentStream: currentStream,
+                  onBack: onBack,
+                  onQualityTap: () => _showQualitySheet(context),
+                ),
+                const Spacer(),
+                AnimatedScale(
+                  scale: visible ? 1 : 0.96,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: _CenterTransportControls(
+                    isPlaying: value.isPlaying,
+                    compact: compact,
+                    onTogglePlay: onTogglePlay,
+                    onSeekRelative: onSeekRelative,
                   ),
                 ),
-                Row(
-                  children: [
-                    Text(
-                      _formatDuration(value.position),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _formatDuration(value.duration),
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ],
+                const Spacer(),
+                _BottomControls(
+                  position: value.position,
+                  duration: value.duration,
+                  compact: compact,
+                  accentColor: colors.primary,
+                  onSeek: onSeek,
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -592,18 +578,19 @@ class _PlayerControls extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
       builder: (context) => SafeArea(
         child: ListView(
           shrinkWrap: true,
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: 16),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(
-                'Качество',
+                'Качество потока',
                 style: Theme.of(
                   context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
             ),
             for (final stream in streams)
@@ -625,82 +612,430 @@ class _PlayerControls extends StatelessWidget {
       ),
     );
   }
-
-  String _streamLabel(DreamStreamType type) {
-    return switch (type) {
-      DreamStreamType.hls => 'HLS',
-      DreamStreamType.dash => 'DASH',
-      DreamStreamType.mp4 => 'MP4',
-      DreamStreamType.webm => 'WebM',
-      DreamStreamType.audio => 'Аудио',
-      DreamStreamType.unknown => 'Поток',
-    };
-  }
-
-  String _formatDuration(Duration duration) {
-    final hours = duration.inHours;
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
-  }
 }
 
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.title,
     required this.subtitle,
+    required this.compact,
+    required this.currentStream,
     required this.onBack,
     required this.onQualityTap,
   });
 
   final String title;
   final String subtitle;
+  final bool compact;
+  final DreamStream? currentStream;
   final VoidCallback onBack;
   final VoidCallback onQualityTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-      child: Row(
-        children: [
-          IconButton(
-            tooltip: 'Назад',
-            color: Colors.white,
-            onPressed: onBack,
-            icon: const Icon(Icons.arrow_back),
-          ),
-          Expanded(
+    final stream = currentStream;
+
+    return Row(
+      children: [
+        _FloatingIconButton(
+          tooltip: 'Назад',
+          icon: Icons.arrow_back,
+          onPressed: onBack,
+          size: compact ? 48 : 56,
+        ),
+        SizedBox(width: compact ? 8 : 12),
+        Expanded(
+          child: _FloatingPill(
+            minHeight: compact ? 48 : 56,
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 14 : 18,
+              vertical: compact ? 7 : 9,
+            ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontSize: compact ? 15 : 17,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
+                if (!compact) ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
               ],
             ),
           ),
-          IconButton(
-            tooltip: 'Качество',
-            color: Colors.white,
-            onPressed: onQualityTap,
-            icon: const Icon(Icons.high_quality_outlined),
+        ),
+        SizedBox(width: compact ? 8 : 12),
+        _FloatingTextButton(
+          tooltip: 'Качество',
+          label: stream == null
+              ? 'Поток'
+              : '${_streamLabel(stream.type)} ${stream.quality}p',
+          icon: Icons.high_quality_outlined,
+          compact: compact,
+          onPressed: onQualityTap,
+        ),
+      ],
+    );
+  }
+}
+
+class _CenterTransportControls extends StatelessWidget {
+  const _CenterTransportControls({
+    required this.isPlaying,
+    required this.compact,
+    required this.onTogglePlay,
+    required this.onSeekRelative,
+  });
+
+  final bool isPlaying;
+  final bool compact;
+  final VoidCallback onTogglePlay;
+  final ValueChanged<Duration> onSeekRelative;
+
+  @override
+  Widget build(BuildContext context) {
+    final sideSize = compact ? 58.0 : 72.0;
+    final playSize = compact ? 72.0 : 88.0;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _FloatingIconButton(
+          tooltip: 'Назад на 10 секунд',
+          icon: Icons.replay_10,
+          onPressed: () => onSeekRelative(const Duration(seconds: -10)),
+          size: sideSize,
+          iconSize: compact ? 30 : 34,
+        ),
+        SizedBox(width: compact ? 18 : 30),
+        _FloatingIconButton(
+          tooltip: isPlaying ? 'Пауза' : 'Воспроизвести',
+          icon: isPlaying ? Icons.pause : Icons.play_arrow,
+          onPressed: onTogglePlay,
+          size: playSize,
+          iconSize: compact ? 42 : 50,
+          accent: true,
+        ),
+        SizedBox(width: compact ? 18 : 30),
+        _FloatingIconButton(
+          tooltip: 'Вперёд на 10 секунд',
+          icon: Icons.forward_10,
+          onPressed: () => onSeekRelative(const Duration(seconds: 10)),
+          size: sideSize,
+          iconSize: compact ? 30 : 34,
+        ),
+      ],
+    );
+  }
+}
+
+class _BottomControls extends StatelessWidget {
+  const _BottomControls({
+    required this.position,
+    required this.duration,
+    required this.compact,
+    required this.accentColor,
+    required this.onSeek,
+  });
+
+  final Duration position;
+  final Duration duration;
+  final bool compact;
+  final Color accentColor;
+  final ValueChanged<Duration> onSeek;
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveDuration = duration <= Duration.zero
+        ? const Duration(seconds: 1)
+        : duration;
+    final max = effectiveDuration.inMilliseconds.toDouble();
+    final value = position.inMilliseconds.clamp(0, max.toInt()).toDouble();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            _TimeLabel(_formatDuration(position)),
+            Expanded(
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: compact ? 5 : 7,
+                  thumbShape: RoundSliderThumbShape(
+                    enabledThumbRadius: compact ? 6 : 7,
+                  ),
+                  overlayShape: RoundSliderOverlayShape(
+                    overlayRadius: compact ? 18 : 22,
+                  ),
+                  activeTrackColor: accentColor,
+                  inactiveTrackColor: Colors.white.withValues(alpha: 0.26),
+                  thumbColor: accentColor,
+                  overlayColor: accentColor.withValues(alpha: 0.18),
+                ),
+                child: Slider(
+                  min: 0,
+                  max: max,
+                  value: value,
+                  onChanged: (next) {
+                    onSeek(Duration(milliseconds: next.round()));
+                  },
+                ),
+              ),
+            ),
+            _TimeLabel(_formatDuration(duration)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _FloatingPill extends StatelessWidget {
+  const _FloatingPill({
+    required this.child,
+    required this.minHeight,
+    required this.padding,
+  });
+
+  final Widget child;
+  final double minHeight;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: _BackdropFilterLayer(
+        child: Container(
+          constraints: BoxConstraints(minHeight: minHeight),
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.42),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.13)),
           ),
-        ],
+          child: child,
+        ),
       ),
+    );
+  }
+}
+
+class _FloatingIconButton extends StatelessWidget {
+  const _FloatingIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    required this.size,
+    this.iconSize = 28,
+    this.accent = false,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final double size;
+  final double iconSize;
+  final bool accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox.square(
+        dimension: size,
+        child: Material(
+          color: accent
+              ? colors.primary.withValues(alpha: 0.86)
+              : Colors.black.withValues(alpha: 0.42),
+          shape: CircleBorder(
+            side: BorderSide(
+              color: accent
+                  ? colors.primaryContainer.withValues(alpha: 0.38)
+                  : Colors.white.withValues(alpha: 0.13),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: Icon(
+              icon,
+              color: accent ? colors.onPrimary : Colors.white,
+              size: iconSize,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FloatingTextButton extends StatelessWidget {
+  const _FloatingTextButton({
+    required this.tooltip,
+    required this.label,
+    required this.icon,
+    required this.compact,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final String label;
+  final IconData icon;
+  final bool compact;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.42),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(999),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.13)),
+        ),
+        child: InkWell(
+          onTap: onPressed,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 12 : 16,
+              vertical: compact ? 12 : 16,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: Colors.white, size: compact ? 20 : 22),
+                if (!compact) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BackdropFilterLayer extends StatelessWidget {
+  const _BackdropFilterLayer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    // A tiny blur gives dark controls a soft Material surface feeling without
+    // turning the whole player into a glassmorphism layout.
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+      child: child,
+    );
+  }
+}
+
+class _SeekFeedback extends StatelessWidget {
+  const _SeekFeedback({required this.text, required this.alignment});
+
+  final String text;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Align(
+      alignment: alignment,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 42),
+        child: AnimatedScale(
+          scale: 1,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutCubic,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.primary.withValues(alpha: 0.88),
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: colors.onPrimary,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimeLabel extends StatelessWidget {
+  const _TimeLabel(this.value);
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 54,
+      child: Text(
+        value,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontFeatures: [FontFeature.tabularFigures()],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayerLoading extends StatelessWidget {
+  const _PlayerLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return CircularProgressIndicator(
+      color: Theme.of(context).colorScheme.primary,
     );
   }
 }
@@ -713,12 +1048,14 @@ class _PlayerError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, color: Colors.white, size: 44),
+          Icon(Icons.error_outline, color: colors.primary, size: 44),
           const SizedBox(height: 16),
           const Text(
             'Не удалось воспроизвести поток',
@@ -726,7 +1063,7 @@ class _PlayerError extends StatelessWidget {
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 8),
@@ -745,4 +1082,23 @@ class _PlayerError extends StatelessWidget {
       ),
     );
   }
+}
+
+String _streamLabel(DreamStreamType type) {
+  return switch (type) {
+    DreamStreamType.hls => 'HLS',
+    DreamStreamType.dash => 'DASH',
+    DreamStreamType.mp4 => 'MP4',
+    DreamStreamType.webm => 'WebM',
+    DreamStreamType.audio => 'Аудио',
+    DreamStreamType.unknown => 'Поток',
+  };
+}
+
+String _formatDuration(Duration duration) {
+  final normalized = duration < Duration.zero ? Duration.zero : duration;
+  final hours = normalized.inHours;
+  final minutes = normalized.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = normalized.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
 }

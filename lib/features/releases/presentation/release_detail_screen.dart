@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dream_cast/app/widgets/app_error_view.dart';
 import 'package:dream_cast/features/library/data/release_bookmark_providers.dart';
+import 'package:dream_cast/features/notifications/data/episode_notification_providers.dart';
 import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
 import 'package:dream_cast/features/player/presentation/preferred_stream_launcher.dart';
@@ -239,7 +240,13 @@ class _DetailBody extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _BookmarkStatusButton(release: release),
+          Row(
+            children: [
+              Expanded(child: _BookmarkStatusButton(release: release)),
+              const SizedBox(width: 10),
+              _EpisodeNotificationButton(release: release),
+            ],
+          ),
           if (description?.trim().isNotEmpty == true) ...[
             const SizedBox(height: 18),
             Text(
@@ -357,6 +364,76 @@ class _BookmarkStatusButton extends ConsumerWidget {
 }
 
 enum _BookmarkAction { remove }
+
+class _EpisodeNotificationButton extends ConsumerWidget {
+  const _EpisodeNotificationButton({required this.release});
+
+  final DreamRelease release;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final enabled = ref.watch(
+      episodeNotificationSubscriptionProvider(release.id),
+    );
+
+    return Tooltip(
+      message: enabled ? 'Уведомления включены' : 'Уведомлять о новых сериях',
+      child: Material(
+        color: enabled
+            ? theme.colorScheme.primaryContainer
+            : theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _toggle(context, ref, enabled),
+          child: SizedBox(
+            width: 56,
+            height: 50,
+            child: Icon(
+              enabled
+                  ? Icons.notifications_active
+                  : Icons.notifications_none_outlined,
+              color: enabled
+                  ? theme.colorScheme.onPrimaryContainer
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggle(
+    BuildContext context,
+    WidgetRef ref,
+    bool enabled,
+  ) async {
+    final controller = ref.read(
+      episodeNotificationSubscriptionProvider(release.id).notifier,
+    );
+    if (enabled) {
+      await controller.disable();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Уведомления о новых сериях выключены.')),
+      );
+      return;
+    }
+
+    final granted = await controller.enable(release);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          granted
+              ? 'Уведомления о новых сериях включены.'
+              : 'Разрешите уведомления в настройках Android.',
+        ),
+      ),
+    );
+  }
+}
 
 class _EpisodeListSheet extends ConsumerStatefulWidget {
   const _EpisodeListSheet({required this.detail});

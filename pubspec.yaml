@@ -51,6 +51,8 @@ dependencies:
   video_player: ^2.11.1
   wakelock_plus: ^1.6.1
   url_launcher: ^6.3.2
+  workmanager: ^0.9.0+3
+  flutter_local_notifications: ^21.0.0
 
 dev_dependencies:
   flutter_test:

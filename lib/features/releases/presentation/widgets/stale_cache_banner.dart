@@ -6,24 +6,26 @@ class StaleCacheBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     return Material(
-      color: theme.colorScheme.tertiaryContainer,
+      color: colors.primaryContainer.withValues(alpha: 0.72),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         child: Row(
           children: [
             Icon(
               Icons.cloud_off_outlined,
               size: 18,
-              color: theme.colorScheme.onTertiaryContainer,
+              color: colors.onPrimaryContainer,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Показаны сохранённые данные. Обновление не удалось.',
+                'Показаны сохранённые данные. Обновление не удалось. Проверьте соединение или попробуйте включить VPN.',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onTertiaryContainer,
+                  color: colors.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

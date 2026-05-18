@@ -1,6 +1,7 @@
 import 'package:dream_cast/app/widgets/app_empty_state.dart';
 import 'package:dream_cast/app/widgets/app_error_view.dart';
 import 'package:dream_cast/core/settings/app_ui_preferences.dart';
+import 'package:dream_cast/features/notifications/data/episode_notification_history_providers.dart';
 import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
@@ -29,6 +30,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(episodeNotificationHistoryProvider.notifier).refresh();
+    });
   }
 
   @override
@@ -42,11 +46,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(latestReleasesProvider);
+    final unreadNotifications = ref.watch(unreadEpisodeNotificationsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dream Cast'),
         actions: [
+          IconButton(
+            tooltip: 'Уведомления',
+            onPressed: () => context.push('/notifications'),
+            icon: Badge(
+              isLabelVisible: unreadNotifications > 0,
+              label: Text(
+                unreadNotifications > 9 ? '9+' : '$unreadNotifications',
+              ),
+              child: const Icon(Icons.notifications_none_outlined),
+            ),
+          ),
           IconButton(
             tooltip: 'Сетка релизов',
             onPressed: _showGridSettings,

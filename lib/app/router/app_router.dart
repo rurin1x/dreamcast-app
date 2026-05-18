@@ -2,6 +2,7 @@ import 'package:animations/animations.dart';
 import 'package:dream_cast/app/widgets/adaptive_app_shell.dart';
 import 'package:dream_cast/features/home/presentation/home_screen.dart';
 import 'package:dream_cast/features/library/presentation/library_screen.dart';
+import 'package:dream_cast/features/notifications/presentation/notification_history_screen.dart';
 import 'package:dream_cast/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:dream_cast/features/onboarding/presentation/splash_screen.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
@@ -146,6 +147,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) =>
             _sharedAxisPage(key: state.pageKey, child: const SearchScreen()),
+      ),
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => _sharedAxisPage(
+          key: state.pageKey,
+          child: const NotificationHistoryScreen(),
+        ),
       ),
       GoRoute(
         path: '/release/:id',

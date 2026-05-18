@@ -4,6 +4,7 @@ import 'package:dream_cast/app/theme/app_theme.dart';
 import 'package:dream_cast/core/database/database_providers.dart';
 import 'package:dream_cast/core/logging/riverpod_logger.dart';
 import 'package:dream_cast/core/settings/settings_providers.dart';
+import 'package:dream_cast/features/notifications/data/episode_notification_history_providers.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,12 +58,77 @@ class _DreamCastMaterialApp extends ConsumerWidget {
           builder: (context, child) {
             return ScrollConfiguration(
               behavior: const _AndroidScrollBehavior(),
-              child: child ?? const SizedBox.shrink(),
+              child: _NotificationNavigationListener(
+                child: child ?? const SizedBox.shrink(),
+              ),
             );
           },
         );
       },
     );
+  }
+}
+
+class _NotificationNavigationListener extends ConsumerStatefulWidget {
+  const _NotificationNavigationListener({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_NotificationNavigationListener> createState() =>
+      _NotificationNavigationListenerState();
+}
+
+class _NotificationNavigationListenerState
+    extends ConsumerState<_NotificationNavigationListener>
+    with WidgetsBindingObserver {
+  bool _openingNotification = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _openPendingNotification();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    ref.read(episodeNotificationHistoryProvider.notifier).refresh();
+    _openPendingNotification();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(notificationTapProvider, (previous, next) {
+      next.whenData((_) => _openPendingNotification());
+    });
+    return widget.child;
+  }
+
+  Future<void> _openPendingNotification() async {
+    if (_openingNotification) return;
+    _openingNotification = true;
+    try {
+      await Future<void>.delayed(const Duration(milliseconds: 650));
+      final controller = ref.read(episodeNotificationHistoryProvider.notifier);
+      await controller.refresh();
+      final entry = await controller.consumePendingTap();
+      if (!mounted || entry == null) return;
+      ref
+          .read(appRouterProvider)
+          .push('/release/${entry.release.id}', extra: entry.release);
+    } finally {
+      _openingNotification = false;
+    }
   }
 }
 

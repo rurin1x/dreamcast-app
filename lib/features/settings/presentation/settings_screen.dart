@@ -74,6 +74,8 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: 'Разработчики',
             onTap: () => context.push('/settings/about'),
           ),
+          const SizedBox(height: 26),
+          const _ReleaseFooter(),
         ],
       ),
     );
@@ -191,6 +193,38 @@ class _SettingsBrandHeader extends StatelessWidget {
             fontWeight: FontWeight.w900,
             letterSpacing: 0,
             height: 0.9,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReleaseFooter extends StatelessWidget {
+  const _ReleaseFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: theme.colorScheme.outlineVariant),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Text(
+            'Dream Cast · v1.0.0 (build 1) · GPLv3 · 2026',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              letterSpacing: 0,
+              fontFeatures: const [],
+            ),
           ),
         ),
       ),

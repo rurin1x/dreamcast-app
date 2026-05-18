@@ -1,4 +1,4 @@
-package ru.dreamcast.dream_cast
+package com.dreamcast.app
 
 import android.app.PictureInPictureParams
 import android.content.pm.PackageManager

@@ -1,12 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class AboutAppScreen extends StatelessWidget {
+class AboutAppScreen extends StatefulWidget {
   const AboutAppScreen({super.key});
+
+  @override
+  State<AboutAppScreen> createState() => _AboutAppScreenState();
+}
+
+class _AboutAppScreenState extends State<AboutAppScreen> {
+  int _rurin1xTapCount = 0;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final rurinPhrase =
+        _rurin1xClickPhrases[(_rurin1xTapCount ~/ 10).clamp(
+          0,
+          _rurin1xClickPhrases.length - 1,
+        )];
 
     return Scaffold(
       body: CustomScrollView(
@@ -20,26 +32,29 @@ class AboutAppScreen extends StatelessWidget {
                 children: [
                   _HeaderPanel(theme: theme),
                   const SizedBox(height: 18),
-                  Text(
-                    'Команда',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                  _SectionTitle(theme: theme, title: 'Разработчик'),
                   const SizedBox(height: 10),
-                  const _DeveloperTile(
+                  _DeveloperTile(
                     imageAsset: 'assets/developers/rurin1x.jpg',
                     name: 'rurin1x',
                     role: 'Разработка приложения',
+                    description: rurinPhrase,
                     icon: Icons.phone_android,
+                    onTap: () {
+                      setState(() {
+                        _rurin1xTapCount = (_rurin1xTapCount + 1).clamp(0, 100);
+                      });
+                    },
                   ),
+                  const SizedBox(height: 20),
+                  _SectionTitle(theme: theme, title: 'Отдельная благодарность'),
                   const SizedBox(height: 10),
                   const _DeveloperTile(
                     imageAsset: 'assets/developers/vypivshiy.png',
                     name: 'vypivshiy',
-                    role: 'Оригинальная реализация API',
+                    role: 'Оригинальная реализация парсера',
                     description:
-                        'Некоторые идеи парсинга и API-логики основаны на anicli-api (MIT License).',
+                        'Некоторые идеи парсинга основаны на anicli-api (MIT License).',
                     icon: Icons.code,
                   ),
                   const SizedBox(height: 20),
@@ -52,6 +67,36 @@ class AboutAppScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Фразы для пасхалки rurin1x лежат здесь. Каждая следующая открывается через
+// 10 нажатий по карточке: 0-9, 10-19, ... 90-100.
+const _rurin1xClickPhrases = [
+  'Жми Жми Жми НА МЕНЯ',
+  'Ты реально кликаешь на карточку? Больной?',
+  'Я кстати мангу еще перевожу',
+  'Хватит уже дрочить на мою аватарку',
+  'НУ ЖМИ ДАЛЬШЕ ДАВАЙ ДАВАЙ',
+  'Да... ты нашел самую бональную пасхалку',
+  'У меня день рождения 15 февраля',
+  'Я начал сотрудничать с Dream Cast 13 октября 2025 года',
+  'Sora Love, Sora Love, Sora Love, SORA LOVE, SORA LOVE ',
+  '100! 100! ЭТО КОНЕЦ!!! ТЫ ДОШЕЛ ДО КОНЦА!!',
+];
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({required this.theme, required this.title});
+
+  final ThemeData theme;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
     );
   }
 }
@@ -92,7 +137,7 @@ class _HeaderPanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dream Cast для Android',
+                    'Dream Cast',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: theme.colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.w800,
@@ -123,6 +168,7 @@ class _DeveloperTile extends StatelessWidget {
     required this.role,
     required this.icon,
     this.description,
+    this.onTap,
   });
 
   final String imageAsset;
@@ -130,6 +176,7 @@ class _DeveloperTile extends StatelessWidget {
   final String role;
   final String? description;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -142,55 +189,64 @@ class _DeveloperTile extends StatelessWidget {
         side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(radius: 34, foregroundImage: AssetImage(imageAsset)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(radius: 34, foregroundImage: AssetImage(imageAsset)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(icon, size: 20, color: theme.colorScheme.primary),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      role,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (description?.trim().isNotEmpty == true) ...[
+                      const SizedBox(height: 8),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
                         child: Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
+                          description!,
+                          key: ValueKey(description),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                            height: 1.35,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Icon(icon, size: 20, color: theme.colorScheme.primary),
                     ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    role,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (description?.trim().isNotEmpty == true) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      description!,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        height: 1.35,
-                      ),
-                    ),
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

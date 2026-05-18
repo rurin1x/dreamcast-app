@@ -1,4 +1,5 @@
 import 'package:dream_cast/features/releases/data/dto/player_playlist_dto.dart';
+import 'package:dream_cast/features/releases/data/dream_cast_diagnostics.dart';
 import 'package:dream_cast/features/releases/data/parsers/dream_cast_html_parser.dart';
 import 'package:dream_cast/features/releases/data/parsers/dream_stream_extractor.dart';
 import 'package:dream_cast/features/releases/data/parsers/playerjs_playlist_decoder.dart';
@@ -59,10 +60,21 @@ final class DreamCastParserService {
       playerScript: playerScript,
       encodedPayload: encodedPayload,
     );
+    logPlayerJsDiagnostic(
+      '[stage=episodes.map.start] releaseId=$releaseId, '
+      'playlist.files=${decoded.playlist.files.length}, '
+      'playlist.runtimeType=${decoded.playlist.runtimeType}',
+    );
     final episodes = decoded.playlist.toEpisodes(releaseId);
     final emptyFiles = episodes
         .where((episode) => episode.file.trim().isEmpty)
         .length;
+    logPlayerJsDiagnostic(
+      '[stage=episodes.map.done] releaseId=$releaseId, '
+      'episodes.count=${episodes.length}, emptyFiles=$emptyFiles, '
+      'first.runtimeType=${episodes.isEmpty ? null : episodes.first.runtimeType}, '
+      'first="${episodes.isEmpty ? '' : '${episodes.first.ordinal}: ${episodes.first.title}'}"',
+    );
     final diagnostics = StringBuffer(decoded.diagnostics)
       ..writeln('mapped.episodes=${episodes.length}')
       ..writeln('mapped.emptyFileEpisodes=$emptyFiles')

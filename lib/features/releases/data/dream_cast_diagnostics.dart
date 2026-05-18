@@ -4,7 +4,12 @@ import 'package:dream_cast/features/releases/domain/release.dart';
 
 const dreamCastDiagnosticsEnabled = bool.fromEnvironment(
   'DREAM_CAST_DIAGNOSTICS',
-  defaultValue: true,
+  defaultValue: false,
+);
+
+const playerJsDiagnosticsEnabled = bool.fromEnvironment(
+  'PLAYERJS_DIAGNOSTICS',
+  defaultValue: false,
 );
 
 final _log = appLogger('dreamcast');
@@ -12,6 +17,11 @@ final _log = appLogger('dreamcast');
 void logDreamCastDiagnostic(String message) {
   if (!dreamCastDiagnosticsEnabled) return;
   _log.info(message);
+}
+
+void logPlayerJsDiagnostic(String message) {
+  if (!dreamCastDiagnosticsEnabled && !playerJsDiagnosticsEnabled) return;
+  _log.info('[PlayerJS] $message');
 }
 
 void logReleaseSample({

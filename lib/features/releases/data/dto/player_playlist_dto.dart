@@ -26,11 +26,8 @@ final class PlayerPlaylistDto {
       ],
       final List list =>
         list
-            .whereType<Map>()
-            .map(
-              (item) =>
-                  PlayerFileItemDto.fromJson(item.cast<String, Object?>()),
-            )
+            .whereType<Map<dynamic, dynamic>>()
+            .map((item) => PlayerFileItemDto.fromJson(_toStringKeyMap(item)))
             .where((item) => item.file.trim().isNotEmpty)
             .toList(growable: false),
       _ => const <PlayerFileItemDto>[],
@@ -41,11 +38,11 @@ final class PlayerPlaylistDto {
     }
 
     return PlayerPlaylistDto(
-      id: json['id'] as String?,
+      id: _stringValue(json['id']),
       files: files,
-      poster: json['poster'] as String?,
-      url: json['url'] as String?,
-      cuid: json['cuid'] as String?,
+      poster: _stringValue(json['poster']),
+      url: _stringValue(json['url']),
+      cuid: _stringValue(json['cuid']),
       raw: json,
     );
   }
@@ -80,15 +77,13 @@ final class PlayerFileItemDto {
   factory PlayerFileItemDto.fromJson(Map<String, Object?> json) {
     final vars = json['vars'];
     return PlayerFileItemDto(
-      file: json['file'] as String? ?? '',
-      label: json['label'] as String?,
-      title: json['title'] as String?,
-      thumbnails: json['thumbnails'] as String?,
-      embed: json['embed'] as String?,
-      id: json['id'] as String?,
-      vars: vars is Map
-          ? vars.map((key, value) => MapEntry('$key', value?.toString() ?? ''))
-          : const {},
+      file: _stringValue(json['file']) ?? '',
+      label: _stringValue(json['label']),
+      title: _stringValue(json['title']),
+      thumbnails: _stringValue(json['thumbnails']),
+      embed: _stringValue(json['embed']),
+      id: _stringValue(json['id']),
+      vars: vars is Map<dynamic, dynamic> ? _toStringMap(vars) : const {},
     );
   }
 
@@ -111,4 +106,26 @@ final class PlayerFileItemDto {
       vars: vars,
     );
   }
+}
+
+Map<String, Object?> _toStringKeyMap(Map<dynamic, dynamic> source) {
+  final result = <String, Object?>{};
+  source.forEach((key, value) {
+    result[key.toString()] = value;
+  });
+  return result;
+}
+
+Map<String, String> _toStringMap(Map<dynamic, dynamic> source) {
+  final result = <String, String>{};
+  source.forEach((key, value) {
+    result[key.toString()] = value?.toString() ?? '';
+  });
+  return result;
+}
+
+String? _stringValue(Object? value) {
+  if (value == null) return null;
+  final text = value.toString();
+  return text.isEmpty ? null : text;
 }

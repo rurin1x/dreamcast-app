@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dream_cast/core/errors/app_exception.dart';
+import 'package:dream_cast/features/releases/data/dream_cast_diagnostics.dart';
 
 final class PlayerJsCrypto {
   const PlayerJsCrypto();
@@ -11,8 +12,16 @@ final class PlayerJsCrypto {
       'ABCDEFGHIJKLMabcdefghijklmNOPQRSTUVWXYZnopqrstuvwxyz0123456789+/=';
 
   String decode(String value) {
+    logPlayerJsDiagnostic(
+      '[stage=crypto.start] input.type=${value.runtimeType}, '
+      'input.length=${value.length}, marker=${value.length >= 2 ? value.substring(0, 2) : 'none'}',
+    );
     if (value.startsWith('#1')) {
-      return _saltDecode(_pepper(value.substring(2), -1));
+      final peppered = _pepper(value.substring(2), -1);
+      logPlayerJsDiagnostic(
+        '[stage=crypto.pepper] mode=#1, output.length=${peppered.length}',
+      );
+      return _saltDecode(peppered);
     }
     if (value.startsWith('#0')) {
       return _saltDecode(value.substring(2));
@@ -47,7 +56,14 @@ final class PlayerJsCrypto {
   }
 
   String _saltDecode(String encoded) {
-    final filtered = encoded.split('').where(_saltAlphabet.contains).join();
+    final filtered = encoded
+        .split('')
+        .where((char) => _saltAlphabet.contains(char))
+        .join();
+    logPlayerJsDiagnostic(
+      '[stage=crypto.salt] encoded.length=${encoded.length}, '
+      'filtered.length=${filtered.length}',
+    );
     final bytes = <int>[];
     var index = 0;
 
@@ -66,7 +82,11 @@ final class PlayerJsCrypto {
       if (a != 64) bytes.add(((u & 3) << 6) | a);
     }
 
-    return utf8.decode(bytes, allowMalformed: true);
+    final decoded = utf8.decode(bytes, allowMalformed: true);
+    logPlayerJsDiagnostic(
+      '[stage=crypto.salt.done] bytes=${bytes.length}, decoded.length=${decoded.length}',
+    );
+    return decoded;
   }
 
   String _pepper(String source, int n) {
@@ -76,6 +96,11 @@ final class PlayerJsCrypto {
     if (n < 0) offset += _abc.length / 2;
     final shift = (offset * 2).toInt();
     final rotated = _abc.substring(shift) + _abc.substring(0, shift);
+
+    logPlayerJsDiagnostic(
+      '[stage=crypto.pepper.start] source.length=${source.length}, '
+      'shift=$shift, rotated.length=${rotated.length}',
+    );
 
     return s.replaceAllMapped(
       RegExp('[A-Za-z]'),

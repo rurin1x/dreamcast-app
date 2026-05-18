@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:dream_cast/core/errors/app_exception.dart';
+import 'package:dream_cast/features/releases/data/dream_cast_diagnostics.dart';
 import 'package:dream_cast/features/releases/data/dto/player_playlist_dto.dart';
 import 'package:dream_cast/features/releases/data/parsers/playerjs_crypto.dart';
 import 'package:dream_cast/features/releases/data/parsers/playerjs_unpacker.dart';
+import 'package:flutter/foundation.dart';
 
 final class PlayerJsPlaylistDecoder {
   const PlayerJsPlaylistDecoder({
@@ -36,15 +38,26 @@ final class PlayerJsPlaylistDecoder {
     required String encodedPayload,
   }) {
     final hasPacked = playerScript.contains("return p}('");
-    final diagnostics = StringBuffer()
-      ..writeln('payload.length=${encodedPayload.length}')
-      ..writeln('payload.preview="${_snippet(encodedPayload)}"')
-      ..writeln('payload.marker="${_payloadMarker(encodedPayload)}"')
-      ..writeln('playerScript.length=${playerScript.length}')
-      ..writeln('playerScript.hasPacked=$hasPacked');
+    final diagnostics = StringBuffer();
+    _stage(
+      diagnostics,
+      'start',
+      'build=${_buildMode()}, payload.type=${encodedPayload.runtimeType}, '
+          'payload.null=false, payload.length=${encodedPayload.length}, '
+          'payload.preview="${_snippet(encodedPayload)}"',
+    );
+    _stage(
+      diagnostics,
+      'start',
+      'payload.marker="${_payloadMarker(encodedPayload)}", '
+          'playerScript.type=${playerScript.runtimeType}, '
+          'playerScript.null=false, playerScript.length=${playerScript.length}, '
+          'playerScript.hasPacked=$hasPacked',
+    );
 
     var stage = 'detect payload format';
     try {
+      stage = 'direct playlist decode';
       final direct = _tryDecodeDirectPlaylist(
         encodedPayload,
         playerScript,
@@ -59,11 +72,12 @@ final class PlayerJsPlaylistDecoder {
         diagnostics: diagnostics,
       );
     } catch (error, stackTrace) {
-      diagnostics
-        ..writeln('failed.stage=$stage')
-        ..writeln('exception.type=${error.runtimeType}')
-        ..writeln('exception=$error')
-        ..writeln('stackTrace=$stackTrace');
+      _stage(
+        diagnostics,
+        'failure',
+        'failed.stage=$stage, exception.type=${error.runtimeType}, '
+            'exception=$error, stackTrace=$stackTrace',
+      );
       throw ParserException(
         'Ошибка декодирования PlayerJS на этапе "$stage".\n'
         '${diagnostics.toString()}',
@@ -77,7 +91,7 @@ final class PlayerJsPlaylistDecoder {
     required String encodedPayload,
     required StringBuffer diagnostics,
   }) {
-    diagnostics.writeln('decode.mode=legacy-playerjs-keys');
+    _stage(diagnostics, 'legacy', 'decode.mode=legacy-playerjs-keys');
     final keyMap = _extractKeyMap(
       playerScript: playerScript,
       diagnostics: diagnostics,
@@ -86,11 +100,13 @@ final class PlayerJsPlaylistDecoder {
     final payload = encodedPayload.length >= 2
         ? encodedPayload.substring(2)
         : encodedPayload;
-    diagnostics
-      ..writeln(
-        'payload.prefix="${encodedPayload.length >= 2 ? encodedPayload.substring(0, 2) : encodedPayload}"',
-      )
-      ..writeln('payload.stripped.length=${payload.length}');
+    _stage(
+      diagnostics,
+      'legacy.payload',
+      'payload.prefix="${encodedPayload.length >= 2 ? encodedPayload.substring(0, 2) : encodedPayload}", '
+          'payload.stripped.length=${payload.length}, '
+          'base64.valid=${_isBase64Like(payload)}',
+    );
     final cleaned = _stripPlaylistKeys(
       payload: payload,
       keyMap: keyMap,
@@ -114,15 +130,24 @@ final class PlayerJsPlaylistDecoder {
   ) {
     final marker = _payloadMarker(encodedPayload);
     if (marker != '#2') {
-      diagnostics.writeln('directDecode.skipped=unsupported marker $marker');
+      _stage(
+        diagnostics,
+        'direct.detect',
+        'directDecode.skipped=unsupported marker $marker',
+      );
       return null;
     }
 
-    diagnostics.writeln('decode.mode=direct-base64-json');
+    _stage(diagnostics, 'direct.detect', 'decode.mode=direct-base64-json');
     final payload = encodedPayload.substring(2);
-    diagnostics
-      ..writeln('direct.payload.length=${payload.length}')
-      ..writeln('direct.payload.preview="${_snippet(payload)}"');
+    _stage(
+      diagnostics,
+      'direct.payload',
+      'direct.payload.length=${payload.length}, '
+          'direct.payload.preview="${_snippet(payload)}", '
+          'base64.valid=${_isBase64Like(payload)}, '
+          'padding.matches=${RegExp(r'=+').allMatches(payload).length}',
+    );
 
     final rawResult = _decodePayloadCandidates(
       payload: payload,
@@ -131,7 +156,11 @@ final class PlayerJsPlaylistDecoder {
     );
     if (rawResult != null) return rawResult;
 
-    diagnostics.writeln('directDecode.cleaningWithPlayerKeys=true');
+    _stage(
+      diagnostics,
+      'direct.clean',
+      'directDecode.cleaningWithPlayerKeys=true',
+    );
     final keyMap = _extractKeyMap(
       playerScript: playerScript,
       diagnostics: diagnostics,
@@ -160,7 +189,25 @@ final class PlayerJsPlaylistDecoder {
     required StringBuffer diagnostics,
     required String label,
   }) {
-    for (final candidate in _directPayloadCandidates(payload)) {
+    final candidates = _directPayloadCandidates(
+      payload,
+    ).toList(growable: false);
+    _stage(
+      diagnostics,
+      '$label.candidates',
+      'payload.length=${payload.length}, candidates.count=${candidates.length}',
+    );
+
+    for (var index = 0; index < candidates.length; index++) {
+      final candidate = candidates[index];
+      _stage(
+        diagnostics,
+        '$label.candidate.$index',
+        'candidate.type=${candidate.runtimeType}, candidate.null=false, '
+            'candidate.length=${candidate.length}, '
+            'base64.valid=${_isBase64Like(candidate)}, '
+            'preview="${_snippet(candidate)}"',
+      );
       final decodedPlaylist = _tryDecodePayloadCandidate(
         candidate: candidate,
         diagnostics: diagnostics,
@@ -170,28 +217,43 @@ final class PlayerJsPlaylistDecoder {
 
       try {
         final playlistJson = jsonDecode(decodedPlaylist);
+        _stage(
+          diagnostics,
+          '$label.json',
+          'json.runtimeType=${playlistJson.runtimeType}, '
+              'json.preview="${_snippet(decodedPlaylist)}"',
+        );
         if (playlistJson is! Map) {
-          diagnostics.writeln(
+          _stage(
+            diagnostics,
+            '$label.json',
             '$label.candidateSkipped=decoded JSON is ${playlistJson.runtimeType}',
           );
           continue;
         }
 
-        final playlistMap = playlistJson.cast<String, Object?>();
+        final playlistMap = _toStringKeyMap(playlistJson);
         _writeFileDiagnostics(diagnostics, playlistMap['file']);
         final playlist = PlayerPlaylistDto.fromJson(playlistMap);
-        diagnostics.writeln('dto.files=${playlist.files.length}');
+        _stage(
+          diagnostics,
+          '$label.dto',
+          'dto.runtimeType=${playlist.runtimeType}, dto.files=${playlist.files.length}',
+        );
 
         return PlayerJsDecodeResult(
           playlist: playlist,
           diagnostics: diagnostics.toString(),
         );
       } catch (error, stackTrace) {
-        diagnostics
-          ..writeln('$label.jsonFailed.length=${candidate.length}')
-          ..writeln('$label.jsonException.type=${error.runtimeType}')
-          ..writeln('$label.jsonException=$error')
-          ..writeln('$label.jsonStackTrace=$stackTrace');
+        _stage(
+          diagnostics,
+          '$label.json',
+          '$label.jsonFailed.length=${candidate.length}, '
+              '$label.jsonException.type=${error.runtimeType}, '
+              '$label.jsonException=$error, '
+              '$label.jsonStackTrace=$stackTrace',
+        );
       }
     }
     return null;
@@ -203,18 +265,28 @@ final class PlayerJsPlaylistDecoder {
     required String label,
   }) {
     try {
-      final decodedPlaylist = _decodeBase64PossiblyUrlEncoded(candidate);
-      diagnostics
-        ..writeln('$label.candidate.length=${candidate.length}')
-        ..writeln('$label.playlistJson.length=${decodedPlaylist.length}')
-        ..writeln('$label.playlistJson.preview="${_snippet(decodedPlaylist)}"');
+      final decodedPlaylist = _decodeBase64PossiblyUrlEncoded(
+        candidate,
+        diagnostics: diagnostics,
+        label: label,
+      );
+      _stage(
+        diagnostics,
+        '$label.utf8',
+        '$label.candidate.length=${candidate.length}, '
+            '$label.playlistJson.length=${decodedPlaylist.length}, '
+            '$label.playlistJson.preview="${_snippet(decodedPlaylist)}"',
+      );
       return decodedPlaylist;
     } catch (error, stackTrace) {
-      diagnostics
-        ..writeln('$label.candidateFailed.length=${candidate.length}')
-        ..writeln('$label.exception.type=${error.runtimeType}')
-        ..writeln('$label.exception=$error')
-        ..writeln('$label.stackTrace=$stackTrace');
+      _stage(
+        diagnostics,
+        '$label.decode',
+        '$label.candidateFailed.length=${candidate.length}, '
+            '$label.exception.type=${error.runtimeType}, '
+            '$label.exception=$error, '
+            '$label.stackTrace=$stackTrace',
+      );
       return null;
     }
   }
@@ -225,28 +297,55 @@ final class PlayerJsPlaylistDecoder {
     required String label,
   }) {
     final unpacked = unpacker.unpack(playerScript);
-    diagnostics
-      ..writeln('$label.unpacked.length=${unpacked.length}')
-      ..writeln('$label.unpacked.preview="${_snippet(unpacked)}"');
+    _stage(
+      diagnostics,
+      '$label.unpack',
+      '$label.unpacked.type=${unpacked.runtimeType}, '
+          '$label.unpacked.length=${unpacked.length}, '
+          '$label.unpacked.preview="${_snippet(unpacked)}"',
+    );
 
-    final cryptCode = _extractCryptCode(unpacked);
-    diagnostics
-      ..writeln('$label.cryptCode.length=${cryptCode.length}')
-      ..writeln('$label.cryptCode.preview="${_snippet(cryptCode)}"');
+    final cryptCode = _extractCryptCode(
+      unpacked,
+      diagnostics: diagnostics,
+      label: label,
+    );
+    _stage(
+      diagnostics,
+      '$label.crypt',
+      '$label.cryptCode.type=${cryptCode.runtimeType}, '
+          '$label.cryptCode.length=${cryptCode.length}, '
+          '$label.cryptCode.preview="${_snippet(cryptCode)}"',
+    );
 
     final decodedConfig = crypto.decode(cryptCode);
-    diagnostics
-      ..writeln('$label.config.length=${decodedConfig.length}')
-      ..writeln('$label.config.preview="${_snippet(decodedConfig)}"');
+    _stage(
+      diagnostics,
+      '$label.config',
+      '$label.config.type=${decodedConfig.runtimeType}, '
+          '$label.config.length=${decodedConfig.length}, '
+          '$label.config.preview="${_snippet(decodedConfig)}"',
+    );
 
     final config = jsonDecode(decodedConfig);
+    _stage(
+      diagnostics,
+      '$label.config',
+      '$label.config.json.runtimeType=${config.runtimeType}',
+    );
     if (config is! Map) {
       throw const ParserException(
         'PlayerJS вернул некорректные ключи декодирования.',
       );
     }
 
-    return config.cast<String, Object?>();
+    final keyMap = _toStringKeyMap(config);
+    _stage(
+      diagnostics,
+      '$label.config',
+      '$label.config.keys=${keyMap.keys.join(',')}',
+    );
+    return keyMap;
   }
 
   String _stripPlaylistKeys({
@@ -259,26 +358,51 @@ final class PlayerJsPlaylistDecoder {
     for (var i = 4; i >= 0; i--) {
       final key = keyMap['bk$i'];
       if (key == null || key == '' || key == 'undefined') {
-        diagnostics.writeln('$label.bk$i=empty');
+        _stage(
+          diagnostics,
+          '$label.keys',
+          '$label.bk$i=empty, runtimeType=${key.runtimeType}, null=${key == null}',
+        );
         continue;
       }
       final encodedKey = base64EncodeUrlComponent('$key');
       final before = cleaned.length;
-      cleaned = cleaned.replaceAll('//$encodedKey', '');
-      diagnostics.writeln(
-        '$label.bk$i.removed=${before != cleaned.length}, keyPreview="${_snippet('$key', max: 42)}"',
+      final needle = '//$encodedKey';
+      final matches = needle.isEmpty ? 0 : needle.allMatches(cleaned).length;
+      cleaned = cleaned.replaceAll(needle, '');
+      _stage(
+        diagnostics,
+        '$label.keys',
+        '$label.bk$i.removed=${before != cleaned.length}, '
+            'matches=$matches, key.runtimeType=${key.runtimeType}, '
+            'encodedKey.length=${encodedKey.length}, '
+            'keyPreview="${_snippet('$key', max: 42)}"',
       );
     }
-    diagnostics
-      ..writeln('$label.payload.length=${cleaned.length}')
-      ..writeln('$label.payload.preview="${_snippet(cleaned)}"');
+    _stage(
+      diagnostics,
+      '$label.payload',
+      '$label.payload.length=${cleaned.length}, '
+          '$label.payload.preview="${_snippet(cleaned)}", '
+          'base64.valid=${_isBase64Like(cleaned)}',
+    );
     return cleaned;
   }
 
-  String _extractCryptCode(String script) {
-    for (final pattern in _cryptCodePatterns) {
-      final match = pattern.firstMatch(script);
-      if (match != null) return match.group(1)!;
+  String _extractCryptCode(
+    String script, {
+    required StringBuffer diagnostics,
+    required String label,
+  }) {
+    for (var index = 0; index < _cryptCodePatterns.length; index++) {
+      final pattern = _cryptCodePatterns[index];
+      final matches = pattern.allMatches(script).toList(growable: false);
+      _stage(
+        diagnostics,
+        '$label.crypt.regex.$index',
+        'pattern="$pattern", matches=${matches.length}',
+      );
+      if (matches.isNotEmpty) return matches.first.group(1)!;
     }
     throw const ParserException('Не найдены ключи декодирования PlayerJS.');
   }
@@ -302,12 +426,44 @@ String base64DecodeUrlComponent(String value) {
   return Uri.decodeComponent(utf8.decode(base64.decode(value)));
 }
 
-String _decodeBase64PossiblyUrlEncoded(String value) {
-  final bytes = base64.decode(base64.normalize(value));
-  final decoded = utf8.decode(bytes, allowMalformed: true);
+String _decodeBase64PossiblyUrlEncoded(
+  String value, {
+  required StringBuffer diagnostics,
+  required String label,
+}) {
+  final bytes = _decodeBase64Bytes(
+    value,
+    diagnostics: diagnostics,
+    label: label,
+  );
+  late final String decoded;
+  try {
+    decoded = utf8.decode(bytes);
+    _stage(
+      diagnostics,
+      '$label.utf8',
+      'utf8.success=true, utf8.allowMalformed=false, decoded.length=${decoded.length}',
+    );
+  } on FormatException catch (error) {
+    decoded = utf8.decode(bytes, allowMalformed: true);
+    _stage(
+      diagnostics,
+      '$label.utf8',
+      'utf8.success=false, utf8.allowMalformedFallback=true, '
+          'error=$error, decoded.length=${decoded.length}',
+    );
+  }
+
   final trimmed = decoded.trimLeft();
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) return decoded;
-  return Uri.decodeComponent(decoded);
+  final uriDecoded = Uri.decodeComponent(decoded);
+  _stage(
+    diagnostics,
+    '$label.uri',
+    'uriDecode.applied=true, uriDecoded.length=${uriDecoded.length}, '
+        'uriDecoded.preview="${_snippet(uriDecoded)}"',
+  );
+  return uriDecoded;
 }
 
 Iterable<String> _directPayloadCandidates(String payload) sync* {
@@ -321,6 +477,42 @@ Iterable<String> _directPayloadCandidates(String payload) sync* {
   }
 }
 
+List<int> _decodeBase64Bytes(
+  String value, {
+  required StringBuffer diagnostics,
+  required String label,
+}) {
+  try {
+    final normalized = base64.normalize(value);
+    final bytes = base64.decode(normalized);
+    _stage(
+      diagnostics,
+      '$label.base64',
+      'base64.codec=standard, base64.valid=true, '
+          'input.length=${value.length}, normalized.length=${normalized.length}, '
+          'bytes.length=${bytes.length}',
+    );
+    return bytes;
+  } on FormatException catch (standardError) {
+    _stage(
+      diagnostics,
+      '$label.base64',
+      'base64.codec=standard, base64.valid=false, '
+          'input.length=${value.length}, error=$standardError',
+    );
+    final normalized = base64Url.normalize(value);
+    final bytes = base64Url.decode(normalized);
+    _stage(
+      diagnostics,
+      '$label.base64',
+      'base64.codec=url, base64.valid=true, '
+          'input.length=${value.length}, normalized.length=${normalized.length}, '
+          'bytes.length=${bytes.length}',
+    );
+    return bytes;
+  }
+}
+
 String _payloadMarker(String value) {
   if (value.length >= 2 && value.startsWith('#')) return value.substring(0, 2);
   return 'none';
@@ -329,10 +521,13 @@ String _payloadMarker(String value) {
 void _writeFileDiagnostics(StringBuffer diagnostics, Object? file) {
   switch (file) {
     case final String value:
-      diagnostics
-        ..writeln('playlist.file.type=String')
-        ..writeln('playlist.file.empty=${value.trim().isEmpty}')
-        ..writeln('playlist.file.preview="${_snippet(value)}"');
+      _stage(
+        diagnostics,
+        'playlist.file',
+        'playlist.file.type=String, playlist.file.runtimeType=${value.runtimeType}, '
+            'playlist.file.null=false, playlist.file.empty=${value.trim().isEmpty}, '
+            'playlist.file.preview="${_snippet(value)}"',
+      );
     case final List list:
       var maps = 0;
       var emptyFiles = 0;
@@ -350,20 +545,57 @@ void _writeFileDiagnostics(StringBuffer diagnostics, Object? file) {
           }
         }
       }
-      diagnostics
-        ..writeln('playlist.file.type=List')
-        ..writeln('playlist.file.count=${list.length}')
-        ..writeln('playlist.file.mapEntries=$maps')
-        ..writeln('playlist.file.nullEntries=$nullEntries')
-        ..writeln('playlist.file.emptyFileEntries=$emptyFiles')
-        ..writeln(
-          'playlist.file.first="${_snippet(list.isEmpty ? '' : '${list.first}')}"',
-        );
+      _stage(
+        diagnostics,
+        'playlist.file',
+        'playlist.file.type=List, playlist.file.runtimeType=${list.runtimeType}, '
+            'playlist.file.count=${list.length}, playlist.file.mapEntries=$maps, '
+            'playlist.file.nullEntries=$nullEntries, '
+            'playlist.file.emptyFileEntries=$emptyFiles, '
+            'playlist.file.first="${_snippet(list.isEmpty ? '' : '${list.first}')}"',
+      );
     default:
-      diagnostics
-        ..writeln('playlist.file.type=${file.runtimeType}')
-        ..writeln('playlist.file.value="${_snippet('$file')}"');
+      _stage(
+        diagnostics,
+        'playlist.file',
+        'playlist.file.type=${file.runtimeType}, playlist.file.null=${file == null}, '
+            'playlist.file.value="${_snippet('$file')}"',
+      );
   }
+}
+
+Map<String, Object?> _toStringKeyMap(Map<dynamic, dynamic> source) {
+  final result = <String, Object?>{};
+  source.forEach((key, value) {
+    result[key.toString()] = value;
+  });
+  return result;
+}
+
+bool _isBase64Like(String value) {
+  try {
+    base64.decode(base64.normalize(value));
+    return true;
+  } on FormatException {
+    try {
+      base64Url.decode(base64Url.normalize(value));
+      return true;
+    } on FormatException {
+      return false;
+    }
+  }
+}
+
+void _stage(StringBuffer diagnostics, String stage, String message) {
+  final line = '[stage=$stage] $message';
+  diagnostics.writeln(line);
+  logPlayerJsDiagnostic(line);
+}
+
+String _buildMode() {
+  if (kReleaseMode) return 'release';
+  if (kProfileMode) return 'profile';
+  return 'debug';
 }
 
 String _snippet(String value, {int max = 500}) {

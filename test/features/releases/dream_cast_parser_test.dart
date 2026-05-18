@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dream_cast/core/utils/url_normalizer.dart';
+import 'package:dream_cast/features/releases/data/dto/dream_release_dto.dart';
 import 'package:dream_cast/features/releases/data/parsers/dream_cast_html_parser.dart';
 import 'package:dream_cast/features/releases/data/parsers/dream_stream_extractor.dart';
 import 'package:dream_cast/features/releases/data/parsers/playerjs_crypto.dart';
@@ -28,6 +29,22 @@ void main() {
         page.playerScriptUrl,
         'https://dreamerscast.com/js/playerjs-2026.js',
       );
+    });
+  });
+
+  group('DreamReleaseDto', () {
+    test('maps API series fields to released and total episodes', () {
+      final release = DreamReleaseDto.fromJson({
+        'id': 540,
+        'russian': 'Власть книжного червя',
+        'original': 'Honzuki no Gekokujou',
+        'url': '/home/release/540-honzuki-no-gekokujou',
+        'series': 6,
+        'currentSeries': 12,
+      }).toDomain();
+
+      expect(release.currentEpisodes, 6);
+      expect(release.totalEpisodes, 12);
     });
   });
 

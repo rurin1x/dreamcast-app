@@ -120,8 +120,8 @@ final class DreamReleaseDto {
       genres: genres,
       studio: studio,
       durationMinutes: duration,
-      totalEpisodes: series,
-      currentEpisodes: currentSeries,
+      totalEpisodes: currentSeries,
+      currentEpisodes: series,
       rating: rating,
       raw: raw,
     );

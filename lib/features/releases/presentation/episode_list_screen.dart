@@ -1,13 +1,13 @@
 import 'package:dream_cast/app/widgets/app_error_view.dart';
 import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
-import 'package:dream_cast/features/releases/data/release_repository.dart';
+import 'package:dream_cast/features/player/presentation/preferred_stream_launcher.dart';
+import 'package:dream_cast/features/player/presentation/stream_selection_sheet.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
 import 'package:dream_cast/features/releases/presentation/release_list_providers.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/stale_cache_banner.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 class EpisodeListScreen extends ConsumerStatefulWidget {
   const EpisodeListScreen({required this.detail, super.key});
@@ -125,7 +125,7 @@ class _EpisodeTile extends ConsumerWidget {
         ],
       ),
       trailing: const Icon(Icons.play_arrow),
-      onTap: () => _showStreamSelection(context, ref, streams),
+      onTap: () => _showStreamSelection(context, ref),
     );
   }
 
@@ -135,92 +135,61 @@ class _EpisodeTile extends ConsumerWidget {
     return 'Остановились на ${_formatDuration(entry.position)}';
   }
 
-  void _showStreamSelection(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<DreamData<List<DreamStream>>> streams,
-  ) {
+  Future<void> _showStreamSelection(BuildContext context, WidgetRef ref) async {
+    final openedPreferred = await openPreferredStreamIfConfigured(
+      context: context,
+      ref: ref,
+      release: release,
+      episode: episode,
+      episodeQueue: episodeQueue,
+      loadStreams: () => ref.read(episodeStreamsProvider(episode).future),
+    );
+    if (openedPreferred || !context.mounted) return;
+
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => SafeArea(
-        child: streams.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (error, stackTrace) => Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            child: AppErrorView(
-              error: error,
-              onRetry: () {
-                Navigator.pop(sheetContext);
-                ref.invalidate(episodeStreamsProvider(episode));
-              },
-            ),
-          ),
-          data: (data) {
-            if (data.value.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.fromLTRB(24, 8, 24, 28),
-                child: Text('Для этой серии не найдено доступных потоков.'),
-              );
-            }
+        child: Consumer(
+          builder: (context, sheetRef, child) {
+            final streams = sheetRef.watch(episodeStreamsProvider(episode));
 
-            return ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              children: [
-                Text(
-                  episode.title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            return streams.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (error, stackTrace) => Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: AppErrorView(
+                  error: error,
+                  onRetry: () {
+                    Navigator.pop(sheetContext);
+                    sheetRef.invalidate(episodeStreamsProvider(episode));
+                  },
                 ),
-                const SizedBox(height: 8),
-                if (data.isStale) const StaleCacheBanner(),
-                for (final stream in data.value)
-                  ListTile(
-                    leading: const Icon(Icons.play_circle_outline),
-                    title: Text(
-                      '${_streamTypeLabel(stream.type)} • ${stream.quality}p',
-                    ),
-                    subtitle: Text(
-                      stream.url.host,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () {
-                      Navigator.pop(sheetContext);
-                      context.push(
-                        '/watch',
-                        extra: PlaybackRequest(
-                          release: release,
-                          episode: episode,
-                          streams: data.value,
-                          initialStream: stream,
-                          episodeQueue: episodeQueue,
-                        ),
-                      );
-                    },
-                  ),
-              ],
+              ),
+              data: (data) {
+                if (data.value.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.fromLTRB(24, 8, 24, 28),
+                    child: Text('Для этой серии не найдено доступных потоков.'),
+                  );
+                }
+
+                return StreamSelectionSheet(
+                  release: release,
+                  episode: episode,
+                  streams: data.value,
+                  episodeQueue: episodeQueue,
+                  isStale: data.isStale,
+                );
+              },
             );
           },
         ),
       ),
     );
-  }
-
-  String _streamTypeLabel(DreamStreamType type) {
-    return switch (type) {
-      DreamStreamType.hls => 'HLS',
-      DreamStreamType.dash => 'DASH',
-      DreamStreamType.mp4 => 'MP4',
-      DreamStreamType.webm => 'WebM',
-      DreamStreamType.audio => 'Аудио',
-      DreamStreamType.unknown => 'Поток',
-    };
   }
 }
 

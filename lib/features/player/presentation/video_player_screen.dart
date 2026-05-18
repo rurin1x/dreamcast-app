@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dream_cast/features/player/data/player_providers.dart';
+import 'package:dream_cast/features/player/data/stream_preference_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
 import 'package:dream_cast/features/releases/data/release_providers.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
@@ -27,9 +28,16 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   Timer? _progressTimer;
   Timer? _uiTimer;
   Timer? _controlsHideTimer;
+  Timer? _seekFeedbackTimer;
   bool _showControls = true;
   bool _isInitializing = true;
   bool _completionHandled = false;
+  bool _isClosing = false;
+  bool _playerModeExited = false;
+  String? _seekFeedbackText;
+  int _seekFeedbackSeconds = 0;
+  bool? _seekFeedbackBackward;
+  Alignment _seekFeedbackAlignment = Alignment.centerRight;
   Object? _error;
 
   @override
@@ -46,9 +54,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _progressTimer?.cancel();
     _uiTimer?.cancel();
     _controlsHideTimer?.cancel();
+    _seekFeedbackTimer?.cancel();
     _controller?.removeListener(_onControllerChanged);
     _controller?.dispose();
-    unawaited(_exitPlayerMode());
+    if (!_playerModeExited) unawaited(_exitPlayerMode(saveProgress: false));
     super.dispose();
   }
 
@@ -56,49 +65,78 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   Widget build(BuildContext context) {
     final controller = _controller;
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _toggleControlsVisibility,
-          child: Stack(
-            children: [
-              Center(
-                child: _error != null
-                    ? _PlayerError(error: _error!, onRetry: _retry)
-                    : _isInitializing ||
-                          controller == null ||
-                          !controller.value.isInitialized
-                    ? const CircularProgressIndicator()
-                    : AspectRatio(
-                        aspectRatio: controller.value.aspectRatio,
-                        child: VideoPlayer(controller),
-                      ),
-              ),
-              if (_showControls && controller != null)
-                _PlayerControls(
-                  controller: controller,
-                  title: _request.episode.title,
-                  subtitle: displayReleaseTitle(_request.release),
-                  streams: _request.streams,
-                  currentStream: _currentStream,
-                  onBack: () => Navigator.pop(context),
-                  onTogglePlay: () {
-                    _togglePlay();
-                    _scheduleControlsAutoHide();
-                  },
-                  onSeekRelative: (offset) {
-                    unawaited(_seekRelative(offset));
-                    _scheduleControlsAutoHide();
-                  },
-                  onStreamSelected: _switchStream,
-                  onSubtitleTap: () {
-                    _showSubtitlePlaceholder();
-                    _scheduleControlsAutoHide();
-                  },
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) unawaited(_closePlayer());
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleControlsVisibility,
+            onDoubleTapDown: _handleDoubleTapSeek,
+            child: Stack(
+              children: [
+                Center(
+                  child: _error != null
+                      ? _PlayerError(error: _error!, onRetry: _retry)
+                      : _isInitializing ||
+                            controller == null ||
+                            !controller.value.isInitialized
+                      ? const CircularProgressIndicator()
+                      : AspectRatio(
+                          aspectRatio: controller.value.aspectRatio,
+                          child: VideoPlayer(controller),
+                        ),
                 ),
-            ],
+                if (_seekFeedbackText != null)
+                  Align(
+                    alignment: _seekFeedbackAlignment,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 42),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.62),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          child: Text(
+                            _seekFeedbackText!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_showControls && controller != null)
+                  _PlayerControls(
+                    controller: controller,
+                    title: _request.episode.title,
+                    subtitle: displayReleaseTitle(_request.release),
+                    streams: _request.streams,
+                    currentStream: _currentStream,
+                    onBack: _closePlayer,
+                    onTogglePlay: () {
+                      _togglePlay();
+                      _scheduleControlsAutoHide();
+                    },
+                    onSeekRelative: (offset) {
+                      unawaited(_seekRelative(offset));
+                      _scheduleControlsAutoHide();
+                    },
+                    onStreamSelected: _switchStream,
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -223,6 +261,48 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     if (mounted) setState(() {});
   }
 
+  void _handleDoubleTapSeek(TapDownDetails details) {
+    final width = MediaQuery.sizeOf(context).width;
+    final backward = details.localPosition.dx < width / 2;
+    final offset = Duration(seconds: backward ? -10 : 10);
+    unawaited(_seekRelative(offset));
+    _showSeekFeedback(backward);
+    _scheduleControlsAutoHide();
+  }
+
+  void _showSeekFeedback(bool backward) {
+    _seekFeedbackTimer?.cancel();
+    setState(() {
+      if (_seekFeedbackBackward == backward && _seekFeedbackText != null) {
+        _seekFeedbackSeconds += 10;
+      } else {
+        _seekFeedbackBackward = backward;
+        _seekFeedbackSeconds = 10;
+      }
+      _seekFeedbackText = backward
+          ? '-$_seekFeedbackSeconds сек'
+          : '+$_seekFeedbackSeconds сек';
+      _seekFeedbackAlignment = backward
+          ? Alignment.centerLeft
+          : Alignment.centerRight;
+    });
+    _seekFeedbackTimer = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      setState(() {
+        _seekFeedbackText = null;
+        _seekFeedbackSeconds = 0;
+        _seekFeedbackBackward = null;
+      });
+    });
+  }
+
+  Future<void> _closePlayer() async {
+    if (_isClosing) return;
+    _isClosing = true;
+    await _exitPlayerMode();
+    if (mounted) Navigator.pop(context);
+  }
+
   Future<void> _retry() async {
     final stream = _currentStream;
     if (stream == null) return;
@@ -288,7 +368,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(this.context);
+              unawaited(_closePlayer());
             },
             child: const Text('К тайтлу'),
           ),
@@ -348,13 +428,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   }
 
   DreamStream _pickPreferredStream(List<DreamStream> streams) {
+    final preference = ref.read(preferredStreamTechnologyProvider);
     final current = _currentStream;
-    if (current == null) return streams.first;
-    return streams.firstWhere(
-      (stream) =>
-          stream.type == current.type && stream.quality == current.quality,
-      orElse: () => streams.first,
-    );
+    return pickPreferredStream(streams, preference, fallback: current);
   }
 
   Future<void> _saveProgress() async {
@@ -370,17 +446,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         );
   }
 
-  void _showSubtitlePlaceholder() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Субтитры будут подключены отдельным слоем. Основа уже готова.',
-        ),
-      ),
-    );
-  }
-
   Future<void> _enterPlayerMode() async {
+    _playerModeExited = false;
     await WakelockPlus.enable();
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     await SystemChrome.setPreferredOrientations([
@@ -390,10 +457,17 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     ]);
   }
 
-  Future<void> _exitPlayerMode() async {
-    await _saveProgress();
+  Future<void> _exitPlayerMode({bool saveProgress = true}) async {
+    if (_playerModeExited) return;
+    _playerModeExited = true;
+    if (saveProgress) await _saveProgress();
     await WakelockPlus.disable();
     await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 120));
     await SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual,
       overlays: SystemUiOverlay.values,
@@ -418,7 +492,6 @@ class _PlayerControls extends StatelessWidget {
     required this.onTogglePlay,
     required this.onSeekRelative,
     required this.onStreamSelected,
-    required this.onSubtitleTap,
   });
 
   final VideoPlayerController controller;
@@ -430,7 +503,6 @@ class _PlayerControls extends StatelessWidget {
   final VoidCallback onTogglePlay;
   final ValueChanged<Duration> onSeekRelative;
   final ValueChanged<DreamStream> onStreamSelected;
-  final VoidCallback onSubtitleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -455,7 +527,6 @@ class _PlayerControls extends StatelessWidget {
             subtitle: subtitle,
             onBack: onBack,
             onQualityTap: () => _showQualitySheet(context),
-            onSubtitleTap: onSubtitleTap,
           ),
           const Spacer(),
           Row(
@@ -580,14 +651,12 @@ class _TopBar extends StatelessWidget {
     required this.subtitle,
     required this.onBack,
     required this.onQualityTap,
-    required this.onSubtitleTap,
   });
 
   final String title;
   final String subtitle;
   final VoidCallback onBack;
   final VoidCallback onQualityTap;
-  final VoidCallback onSubtitleTap;
 
   @override
   Widget build(BuildContext context) {
@@ -623,12 +692,6 @@ class _TopBar extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          IconButton(
-            tooltip: 'Субтитры',
-            color: Colors.white,
-            onPressed: onSubtitleTap,
-            icon: const Icon(Icons.subtitles_outlined),
           ),
           IconButton(
             tooltip: 'Качество',

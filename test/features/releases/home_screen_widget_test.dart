@@ -80,7 +80,8 @@ void main() {
       );
 
       expect(find.byType(ReleaseGridSkeleton), findsOneWidget);
-      expect(find.textContaining('animetosho.xyz'), findsOneWidget);
+      expect(find.textContaining('GPLv3'), findsOneWidget);
+      expect(find.textContaining('GitHub'), findsOneWidget);
     });
 
     testWidgets('renders empty state when provider returns 0 items', (

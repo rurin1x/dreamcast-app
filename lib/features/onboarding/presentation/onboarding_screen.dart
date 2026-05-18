@@ -34,41 +34,59 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _ProfilePage(controller: _profileController, onNext: _saveProfileAndNext),
       _PermissionPage(onFinish: _finish),
     ];
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
               child: Row(
                 children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: theme.colorScheme.onPrimaryContainer,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Text(
                     'Dream Cast',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   const Spacer(),
                   Text(
-                    '${_page + 1}/${pages.length}',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    'Шаг ${_page + 1} из ${pages.length}',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
               child: LinearProgressIndicator(
                 value: (_page + 1) / pages.length,
+                minHeight: 6,
                 borderRadius: BorderRadius.circular(99),
               ),
             ),
             Expanded(
               child: PageView(
                 controller: _controller,
+                physics: const ClampingScrollPhysics(),
                 onPageChanged: (value) => setState(() => _page = value),
                 children: pages,
               ),
@@ -124,30 +142,33 @@ class _OnboardingPageShell extends StatelessWidget {
     final theme = Theme.of(context);
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 36, 24, 24),
+      padding: const EdgeInsets.fromLTRB(24, 34, 24, 24),
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: CircleAvatar(
-            radius: 28,
-            backgroundColor: theme.colorScheme.primaryContainer,
-            foregroundColor: theme.colorScheme.onPrimaryContainer,
-            child: Icon(icon, size: 30),
+        Container(
+          width: 72,
+          height: 72,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: theme.colorScheme.outlineVariant),
           ),
+          child: Icon(icon, size: 34, color: theme.colorScheme.primary),
         ),
         const SizedBox(height: 28),
         Text(
           title,
           style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
+            height: 1.12,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Text(
           message,
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
-            height: 1.35,
+            height: 1.38,
           ),
         ),
         const SizedBox(height: 28),
@@ -165,17 +186,29 @@ class _WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _OnboardingPageShell(
-      icon: Icons.play_circle_outline,
-      title: 'Добро пожаловать',
+      icon: Icons.play_circle_outline_rounded,
+      title: 'Настроим приложение',
       message:
-          'Клиент для релизов Dream Cast с аккуратным интерфейсом, быстрым доступом к сериям и подготовкой к удобному просмотру.',
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: FilledButton.icon(
-          onPressed: onNext,
-          icon: const Icon(Icons.arrow_forward),
-          label: const Text('Начать настройку'),
-        ),
+          'Приложение будет хранить профиль, прогресс просмотра и личные настройки прямо на устройстве. Сначала выберем внешний вид и подготовим локальный профиль.',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _SetupChip(icon: Icons.auto_awesome, label: 'Material 3'),
+              _SetupChip(icon: Icons.bookmark_outline, label: 'Библиотека'),
+              _SetupChip(icon: Icons.history, label: 'Продолжение просмотра'),
+            ],
+          ),
+          const SizedBox(height: 28),
+          FilledButton.icon(
+            onPressed: onNext,
+            icon: const Icon(Icons.arrow_forward),
+            label: const Text('Начать настройку'),
+          ),
+        ],
       ),
     );
   }
@@ -193,23 +226,32 @@ class _ThemePage extends ConsumerWidget {
 
     return _OnboardingPageShell(
       icon: Icons.dark_mode_outlined,
-      title: 'Выберите тему',
+      title: 'Тема интерфейса',
       message:
-          'Приложение может следовать системной теме Android или использовать выбранный режим постоянно.',
+          'Можно следовать системной теме Android или закрепить светлый либо тёмный режим только для приложения.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SegmentedButton<ThemeMode>(
-            segments: ThemeMode.values
-                .map(
-                  (mode) => ButtonSegment<ThemeMode>(
-                    value: mode,
-                    label: Text(mode.russianLabel),
-                  ),
-                )
-                .toList(),
-            selected: {settings.themeMode},
-            onSelectionChanged: (value) => controller.setThemeMode(value.first),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: SegmentedButton<ThemeMode>(
+              style: const ButtonStyle(
+                minimumSize: WidgetStatePropertyAll(Size(64, 52)),
+                tapTargetSize: MaterialTapTargetSize.padded,
+                visualDensity: VisualDensity.standard,
+              ),
+              segments: ThemeMode.values
+                  .map(
+                    (mode) => ButtonSegment<ThemeMode>(
+                      value: mode,
+                      label: Text(mode.russianLabel),
+                    ),
+                  )
+                  .toList(),
+              selected: {settings.themeMode},
+              onSelectionChanged: (value) =>
+                  controller.setThemeMode(value.first),
+            ),
           ),
           const SizedBox(height: 24),
           FilledButton(onPressed: onNext, child: const Text('Продолжить')),
@@ -231,19 +273,20 @@ class _AccentPage extends ConsumerWidget {
 
     return _OnboardingPageShell(
       icon: Icons.palette_outlined,
-      title: 'Акцент приложения',
+      title: 'Цветовой акцент',
       message:
-          'На современных Android можно взять цвет из обоев. Если хочется постоянный оттенок, выберите его здесь.',
+          'На современных версиях Android приложение может взять цвета из системы. Если нужен постоянный оттенок, выберите его вручную.',
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Использовать цвета системы'),
-            subtitle: const Text('Monet / Material You, если доступно'),
+            subtitle: const Text('Динамический цвет Android, если доступен'),
             value: settings.useDynamicColor,
             onChanged: controller.setUseDynamicColor,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -258,13 +301,7 @@ class _AccentPage extends ConsumerWidget {
             }).toList(),
           ),
           const SizedBox(height: 24),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: FilledButton(
-              onPressed: onNext,
-              child: const Text('Продолжить'),
-            ),
-          ),
+          FilledButton(onPressed: onNext, child: const Text('Продолжить')),
         ],
       ),
     );
@@ -281,9 +318,9 @@ class _ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return _OnboardingPageShell(
       icon: Icons.person_outline,
-      title: 'Локальный профиль',
+      title: 'Профиль на устройстве',
       message:
-          'Профиль хранится только на устройстве. Он нужен для истории, продолжения просмотра и личных настроек.',
+          'Профиль нужен для истории, закладок и продолжения просмотра. Эти данные остаются локально и не требуют входа в аккаунт.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -316,27 +353,23 @@ class _PermissionPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return _OnboardingPageShell(
       icon: Icons.privacy_tip_outlined,
-      title: 'Разрешения и данные',
+      title: 'Данные и доступ',
       message:
-          'На старте приложению нужен только доступ к сети. Кэш, история и прогресс просмотра сохраняются локально и управляются в настройках.',
+          'Для работы нужны только сеть и локальное хранилище. Кэш, история и прогресс просмотра управляются в настройках приложения.',
       child: Column(
         children: [
           const _PermissionItem(
-            icon: Icons.wifi,
+            icon: Icons.wifi_rounded,
             title: 'Сеть',
-            subtitle: 'Для загрузки релизов, страниц и потоков.',
+            subtitle: 'Загрузка релизов, страниц, постеров и видеопотоков.',
           ),
+          const SizedBox(height: 10),
           const _PermissionItem(
-            icon: Icons.storage,
+            icon: Icons.storage_rounded,
             title: 'Локальное хранилище',
-            subtitle: 'Для кэша, профиля и продолжения просмотра.',
+            subtitle: 'Кэш, профиль, закладки и продолжение просмотра.',
           ),
-          const _PermissionItem(
-            icon: Icons.subtitles_outlined,
-            title: 'Субтитры',
-            subtitle: 'Архитектура уже готова к подключению дорожек позже.',
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Align(
             alignment: Alignment.centerLeft,
             child: FilledButton.icon(
@@ -346,6 +379,35 @@ class _PermissionPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SetupChip extends StatelessWidget {
+  const _SetupChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(label, style: theme.textTheme.labelLarge),
+          ],
+        ),
       ),
     );
   }
@@ -364,11 +426,40 @@ class _PermissionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon),
-      title: Text(title),
-      subtitle: Text(subtitle),
+    final theme = Theme.of(context);
+
+    return Material(
+      color: theme.colorScheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Row(
+          children: [
+            Icon(icon, color: theme.colorScheme.primary),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

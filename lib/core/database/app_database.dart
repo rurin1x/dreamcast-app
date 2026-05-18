@@ -144,6 +144,32 @@ class AppDatabase extends _$AppDatabase {
         .go();
   }
 
+  Future<List<CacheEntry>> allCacheEntries() {
+    return select(cacheEntries).get();
+  }
+
+  Future<int> clearAllCache() {
+    return delete(cacheEntries).go();
+  }
+
+  Future<int> rewriteCacheExpiration(Duration? retention) async {
+    final entries = await allCacheEntries();
+    await transaction(() async {
+      for (final entry in entries) {
+        await (update(
+          cacheEntries,
+        )..where((row) => row.key.equals(entry.key))).write(
+          CacheEntriesCompanion(
+            expiresAt: Value(
+              retention == null ? null : entry.updatedAt.add(retention),
+            ),
+          ),
+        );
+      }
+    });
+    return entries.length;
+  }
+
   Future<void> savePlaybackPosition(PlaybackPositionsCompanion position) {
     return into(playbackPositions).insertOnConflictUpdate(position);
   }

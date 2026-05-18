@@ -13,6 +13,7 @@ import 'package:dream_cast/features/releases/presentation/widgets/stale_cache_ba
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -159,6 +160,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 class _SupportBanner extends ConsumerWidget {
   const _SupportBanner();
 
+  static final _sourceUrl = Uri.parse(
+    'https://github.com/rurin1x/dreamcast-app',
+  );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(appUiPreferencesProvider);
@@ -172,20 +177,19 @@ class _SupportBanner extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () =>
-              ref.read(appUiPreferencesProvider.notifier).hideSupportBanner(),
+          onTap: () => _openSource(context),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
             child: Row(
               children: [
                 Icon(
-                  Icons.favorite_outline,
+                  Icons.code_rounded,
                   color: theme.colorScheme.onSecondaryContainer,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Приложение создано благодаря фонду animetosho.xyz, приходите на наш торрент-трекер!',
+                    'Приложение имеет открытый исходный код и распространяется по лицензии GPLv3. Исходный код можно посмотреть на GitHub. Нажмите на уведомление для просмотра.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w600,
@@ -205,6 +209,18 @@ class _SupportBanner extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openSource(BuildContext context) async {
+    final opened = await launchUrl(
+      _sourceUrl,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть GitHub.')),
+      );
+    }
   }
 }
 

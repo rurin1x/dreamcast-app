@@ -13,7 +13,7 @@ class PlayerPlaceholderScreen extends StatelessWidget {
         icon: Icons.play_circle_outline,
         title: 'Проигрыватель подготовлен',
         message:
-            'Следующий этап подключит Media3/ExoPlayer, дорожки субтитров и сохранение позиции.',
+            'Следующий этап улучшит Android-плеер, выбор качества и сохранение позиции.',
       ),
     );
   }

@@ -29,3 +29,23 @@ final episodeWatchEntryProvider = FutureProvider.autoDispose
           .watch(playbackRepositoryProvider)
           .getEpisodeWatchEntry(release: key.release, episode: key.episode),
     );
+
+void invalidatePlaybackProgressForEpisodes(
+  WidgetRef ref, {
+  required DreamRelease release,
+  required Iterable<DreamEpisode> episodes,
+}) {
+  ref.invalidate(continueWatchingProvider);
+  for (final episode in episodes) {
+    ref
+      ..invalidate(
+        episodeWatchEntryProvider((release: release, episode: episode)),
+      )
+      ..invalidate(
+        playbackPositionProvider((
+          releaseId: '${release.id}',
+          episodeId: episode.id,
+        )),
+      );
+  }
+}

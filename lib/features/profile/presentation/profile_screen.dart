@@ -31,6 +31,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(activeProfileProvider);
+    final theme = Theme.of(context);
 
     return AppScreen(
       title: 'Профиль',
@@ -39,9 +40,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           TextField(
             controller: _controller,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Имя профиля',
-              hintText: 'Как к вам обращаться',
+              hintText: 'Например rurin1x',
+              border: const OutlineInputBorder(),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: theme.colorScheme.outline),
+              ),
             ),
           ),
           const SizedBox(height: 20),

@@ -228,7 +228,7 @@ class _ThemePage extends ConsumerWidget {
       icon: Icons.dark_mode_outlined,
       title: 'Тема интерфейса',
       message:
-          'Можно следовать системной теме Android или закрепить светлый либо тёмный режим только для приложения.',
+          'Можно использовать системную тему Android или закрепить светлый либо тёмный режим только для приложения.',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -282,7 +282,7 @@ class _AccentPage extends ConsumerWidget {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Использовать цвета системы'),
-            subtitle: const Text('Динамический цвет Android, если доступен'),
+            subtitle: const Text('Динамический цвет Android, если он доступен'),
             value: settings.useDynamicColor,
             onChanged: controller.setUseDynamicColor,
           ),
@@ -316,6 +316,8 @@ class _ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return _OnboardingPageShell(
       icon: Icons.person_outline,
       title: 'Профиль на устройстве',
@@ -327,9 +329,13 @@ class _ProfilePage extends StatelessWidget {
           TextField(
             controller: controller,
             textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Имя профиля',
-              hintText: 'Например, Иван',
+              hintText: 'Например rurin1x',
+              border: const OutlineInputBorder(),
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: theme.colorScheme.outline),
+              ),
             ),
             onSubmitted: (_) => onNext(),
           ),

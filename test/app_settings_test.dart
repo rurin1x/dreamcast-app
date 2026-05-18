@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('theme and accent labels are Russian', () {
-    expect(ThemeMode.system.russianLabel, 'Как в системе');
+    expect(ThemeMode.system.russianLabel, 'Системная');
     expect(ThemeMode.light.russianLabel, 'Светлая');
     expect(ThemeMode.dark.russianLabel, 'Тёмная');
     expect(AppAccent.system.label, 'Системный');

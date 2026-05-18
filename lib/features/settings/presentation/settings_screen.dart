@@ -23,6 +23,7 @@ class SettingsScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
+          const _SettingsBrandHeader(),
           SettingsTile(
             icon: Icons.person_outline,
             title: 'Профиль',
@@ -161,6 +162,38 @@ class SettingsScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _SettingsBrandHeader extends StatelessWidget {
+  const _SettingsBrandHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+      child: Container(
+        height: 128,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: colors.primaryContainer.withValues(alpha: 0.58),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: colors.outlineVariant),
+        ),
+        child: Text(
+          'DC',
+          style: theme.textTheme.displayLarge?.copyWith(
+            color: colors.primary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0,
+            height: 0.9,
+          ),
+        ),
+      ),
     );
   }
 }

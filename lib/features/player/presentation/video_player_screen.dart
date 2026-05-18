@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' show FontFeature, ImageFilter;
 
 import 'package:dream_cast/features/player/data/player_providers.dart';
+import 'package:dream_cast/features/player/data/player_pip_service.dart';
 import 'package:dream_cast/features/player/data/stream_preference_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
 import 'package:dream_cast/features/releases/data/release_providers.dart';
@@ -35,6 +36,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   bool _completionHandled = false;
   bool _isClosing = false;
   bool _playerModeExited = false;
+  bool _isInPip = false;
   String? _seekFeedbackText;
   int _seekFeedbackSeconds = 0;
   bool? _seekFeedbackBackward;
@@ -46,6 +48,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     super.initState();
     _request = widget.request;
     _currentStream = _request.initialStream;
+    PlayerPipService.setModeChangedHandler(_handlePipModeChanged);
     unawaited(_enterPlayerMode());
     unawaited(_initialize(stream: _request.initialStream, resume: true));
   }
@@ -56,6 +59,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     _uiTimer?.cancel();
     _controlsHideTimer?.cancel();
     _seekFeedbackTimer?.cancel();
+    PlayerPipService.setModeChangedHandler(null);
+    unawaited(PlayerPipService.setEnabled(enabled: false));
     _controller?.removeListener(_onControllerChanged);
     _controller?.dispose();
     if (!_playerModeExited) unawaited(_exitPlayerMode(saveProgress: false));
@@ -99,7 +104,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
                 ),
               if (controller != null)
                 _PlayerControls(
-                  visible: _showControls,
+                  visible: _showControls && !_isInPip,
                   controller: controller,
                   title: _request.episode.title,
                   subtitle: displayReleaseTitle(_request.release),
@@ -164,6 +169,10 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
             ),
       );
       await controller.initialize();
+      await PlayerPipService.setEnabled(
+        enabled: true,
+        aspectRatio: controller.value.aspectRatio,
+      );
 
       final resumePosition =
           preservePosition ??
@@ -207,6 +216,14 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       resume: false,
       preservePosition: position,
     );
+  }
+
+  void _handlePipModeChanged(bool active) {
+    if (!mounted) return;
+    setState(() {
+      _isInPip = active;
+      if (active) _showControls = false;
+    });
   }
 
   void _onControllerChanged() {
@@ -454,6 +471,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     if (_playerModeExited) return;
     _playerModeExited = true;
     if (saveProgress) await _saveProgress();
+    await PlayerPipService.setEnabled(enabled: false);
     await WakelockPlus.disable();
     await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     await SystemChrome.setEnabledSystemUIMode(

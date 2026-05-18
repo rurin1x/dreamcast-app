@@ -6,12 +6,14 @@ final class PlaybackRequest {
     required this.episode,
     required this.streams,
     required this.initialStream,
+    this.episodeQueue = const [],
   });
 
   final DreamRelease release;
   final DreamEpisode episode;
   final List<DreamStream> streams;
   final DreamStream initialStream;
+  final List<DreamEpisode> episodeQueue;
 }
 
 final class ContinueWatchingItem {

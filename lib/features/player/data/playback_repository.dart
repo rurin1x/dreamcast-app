@@ -43,6 +43,28 @@ final class PlaybackRepository {
     );
   }
 
+  Future<ContinueWatchingItem?> getEpisodeWatchEntry({
+    required DreamRelease release,
+    required DreamEpisode episode,
+  }) async {
+    final row = await _database.watchEntry('${release.id}', episode.id);
+    if (row == null) return null;
+    return ContinueWatchingItem(
+      releaseId: row.releaseId,
+      episodeId: row.episodeId,
+      releaseTitle: row.releaseTitle,
+      episodeTitle: row.episodeTitle,
+      episodeOrdinal: row.episodeOrdinal,
+      position: Duration(milliseconds: row.positionMs),
+      duration: row.durationMs == null
+          ? null
+          : Duration(milliseconds: row.durationMs!),
+      updatedAt: row.updatedAt,
+      posterUrl: row.posterUrl,
+      isWatched: row.isWatched,
+    );
+  }
+
   Future<void> saveWatchProgress({
     required DreamRelease release,
     required DreamEpisode episode,

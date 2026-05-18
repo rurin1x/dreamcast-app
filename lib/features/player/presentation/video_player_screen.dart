@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
+import 'package:dream_cast/features/releases/data/release_providers.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
+import 'package:dream_cast/features/releases/presentation/release_title_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,19 +23,22 @@ class VideoPlayerScreen extends ConsumerStatefulWidget {
 class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   VideoPlayerController? _controller;
   DreamStream? _currentStream;
+  late PlaybackRequest _request;
   Timer? _progressTimer;
   Timer? _uiTimer;
   Timer? _controlsHideTimer;
   bool _showControls = true;
   bool _isInitializing = true;
+  bool _completionHandled = false;
   Object? _error;
 
   @override
   void initState() {
     super.initState();
-    _currentStream = widget.request.initialStream;
+    _request = widget.request;
+    _currentStream = _request.initialStream;
     unawaited(_enterPlayerMode());
-    unawaited(_initialize(stream: widget.request.initialStream, resume: true));
+    unawaited(_initialize(stream: _request.initialStream, resume: true));
   }
 
   @override
@@ -74,9 +79,9 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
               if (_showControls && controller != null)
                 _PlayerControls(
                   controller: controller,
-                  title: widget.request.episode.title,
-                  subtitle: widget.request.release.title,
-                  streams: widget.request.streams,
+                  title: _request.episode.title,
+                  subtitle: displayReleaseTitle(_request.release),
+                  streams: _request.streams,
                   currentStream: _currentStream,
                   onBack: () => Navigator.pop(context),
                   onTogglePlay: () {
@@ -110,6 +115,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
       _error = null;
       _currentStream = stream;
       _showControls = true;
+      _completionHandled = false;
     });
 
     _uiTimer?.cancel();
@@ -130,8 +136,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         ref
             .read(playbackRepositoryProvider)
             .saveDreamStreamSession(
-              release: widget.request.release,
-              episode: widget.request.episode,
+              release: _request.release,
+              episode: _request.episode,
               stream: stream,
             ),
       );
@@ -143,8 +149,8 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
               ? (await ref
                         .read(playbackRepositoryProvider)
                         .getPosition(
-                          releaseId: '${widget.request.release.id}',
-                          episodeId: widget.request.episode.id,
+                          releaseId: '${_request.release.id}',
+                          episodeId: _request.episode.id,
                         ))
                     ?.position
               : null);
@@ -189,6 +195,16 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
         () => _error =
             controller.value.errorDescription ?? 'Ошибка воспроизведения',
       );
+      return;
+    }
+
+    final duration = controller.value.duration;
+    final position = controller.value.position;
+    if (!_completionHandled &&
+        duration > Duration.zero &&
+        position >= duration - const Duration(milliseconds: 700)) {
+      _completionHandled = true;
+      unawaited(_handlePlaybackCompleted());
     }
   }
 
@@ -254,14 +270,101 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     });
   }
 
+  Future<void> _handlePlaybackCompleted() async {
+    await _saveProgress();
+    if (!mounted) return;
+
+    final nextEpisode = _nextEpisode();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Серия закончилась'),
+        content: Text(
+          nextEpisode == null
+              ? 'Это последняя доступная серия.'
+              : 'Перейти к следующей серии?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(this.context);
+            },
+            child: const Text('К тайтлу'),
+          ),
+          if (nextEpisode != null)
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                unawaited(_playNextEpisode(nextEpisode));
+              },
+              child: const Text('Следующая серия'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  DreamEpisode? _nextEpisode() {
+    final queue = _request.episodeQueue;
+    if (queue.isEmpty) return null;
+    final currentIndex = queue.indexWhere(
+      (episode) => episode.id == _request.episode.id,
+    );
+    if (currentIndex < 0 || currentIndex + 1 >= queue.length) return null;
+    return queue[currentIndex + 1];
+  }
+
+  Future<void> _playNextEpisode(DreamEpisode episode) async {
+    setState(() {
+      _isInitializing = true;
+      _showControls = true;
+      _error = null;
+    });
+
+    try {
+      final data = await ref
+          .read(releaseRepositoryProvider)
+          .getStreams(episode);
+      if (data.value.isEmpty) {
+        throw StateError('Для следующей серии не найден поток.');
+      }
+      final preferred = _pickPreferredStream(data.value);
+      _request = PlaybackRequest(
+        release: _request.release,
+        episode: episode,
+        streams: data.value,
+        initialStream: preferred,
+        episodeQueue: _request.episodeQueue,
+      );
+      await _initialize(stream: preferred, resume: true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error;
+        _isInitializing = false;
+      });
+    }
+  }
+
+  DreamStream _pickPreferredStream(List<DreamStream> streams) {
+    final current = _currentStream;
+    if (current == null) return streams.first;
+    return streams.firstWhere(
+      (stream) =>
+          stream.type == current.type && stream.quality == current.quality,
+      orElse: () => streams.first,
+    );
+  }
+
   Future<void> _saveProgress() async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
     await ref
         .read(playbackRepositoryProvider)
         .saveWatchProgress(
-          release: widget.request.release,
-          episode: widget.request.episode,
+          release: _request.release,
+          episode: _request.episode,
           position: controller.value.position,
           duration: controller.value.duration,
         );
@@ -290,8 +393,11 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
   Future<void> _exitPlayerMode() async {
     await _saveProgress();
     await WakelockPlus.disable();
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
   }
 
   Duration _clampDuration(Duration value, Duration max) {

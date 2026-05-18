@@ -2,6 +2,7 @@ import 'package:dream_cast/core/database/database_providers.dart';
 import 'package:dream_cast/features/player/data/playback_repository.dart';
 import 'package:dream_cast/features/player/domain/playback_position.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
+import 'package:dream_cast/features/releases/domain/release.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final playbackRepositoryProvider = Provider<PlaybackRepository>(
@@ -17,4 +18,14 @@ final playbackPositionProvider = FutureProvider.autoDispose
       (ref, key) => ref
           .watch(playbackRepositoryProvider)
           .getPosition(releaseId: key.releaseId, episodeId: key.episodeId),
+    );
+
+final episodeWatchEntryProvider = FutureProvider.autoDispose
+    .family<
+      ContinueWatchingItem?,
+      ({DreamRelease release, DreamEpisode episode})
+    >(
+      (ref, key) => ref
+          .watch(playbackRepositoryProvider)
+          .getEpisodeWatchEntry(release: key.release, episode: key.episode),
     );

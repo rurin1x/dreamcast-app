@@ -1,4 +1,5 @@
 import 'package:dream_cast/features/releases/domain/release.dart';
+import 'package:dream_cast/features/releases/presentation/release_title_formatter.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/release_poster.dart';
 import 'package:flutter/material.dart';
 
@@ -23,7 +24,7 @@ class ReleaseCard extends StatelessWidget {
             Expanded(child: ReleasePoster(imageUrl: release.posterUrl)),
             const SizedBox(height: 6),
             Text(
-              release.title,
+              displayReleaseTitle(release),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelMedium?.copyWith(
@@ -80,7 +81,11 @@ class ReleaseListTile extends StatelessWidget {
         width: 48,
         child: ReleasePoster(imageUrl: release.posterUrl, borderRadius: 8),
       ),
-      title: Text(release.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+      title: Text(
+        displayReleaseTitle(release),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
       subtitle: Text(
         [
           if (release.currentEpisodes != null)

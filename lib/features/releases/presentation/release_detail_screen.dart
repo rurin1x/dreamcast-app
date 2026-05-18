@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dream_cast/app/widgets/app_error_view.dart';
+import 'package:dream_cast/features/library/data/release_bookmark_providers.dart';
+import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
-import 'package:dream_cast/features/releases/data/release_repository.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
+import 'package:dream_cast/features/releases/presentation/release_title_formatter.dart';
 import 'package:dream_cast/features/releases/presentation/release_list_providers.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/metadata_chip.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/release_poster.dart';
@@ -29,6 +31,14 @@ class _ReleaseDetailScreenState extends ConsumerState<ReleaseDetailScreen> {
     final detailState = ref.watch(releaseDetailProvider(widget.release));
 
     return Scaffold(
+      floatingActionButton: detailState.maybeWhen(
+        data: (data) => FloatingActionButton.extended(
+          onPressed: () => _showEpisodeList(context, data.value),
+          icon: const Icon(Icons.play_arrow),
+          label: const Text('Смотреть'),
+        ),
+        orElse: () => null,
+      ),
       body: detailState.when(
         loading: () => _DetailSkeleton(release: widget.release),
         error: (error, stackTrace) => CustomScrollView(
@@ -45,8 +55,6 @@ class _ReleaseDetailScreenState extends ConsumerState<ReleaseDetailScreen> {
         ),
         data: (data) {
           final detail = data.value;
-          final episodesState = ref.watch(releaseEpisodesProvider(detail));
-
           return CustomScrollView(
             slivers: [
               _HeaderSliver(release: widget.release, detail: detail),
@@ -64,13 +72,20 @@ class _ReleaseDetailScreenState extends ConsumerState<ReleaseDetailScreen> {
                   },
                 ),
               ),
-              SliverToBoxAdapter(
-                child: _EpisodePreview(detail: detail, state: episodesState),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 104)),
             ],
           );
         },
       ),
+    );
+  }
+
+  void _showEpisodeList(BuildContext context, DreamReleaseDetail detail) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _EpisodeListSheet(detail: detail),
     );
   }
 }
@@ -90,10 +105,13 @@ class _HeaderSliver extends StatelessWidget {
       pinned: true,
       expandedHeight: 280,
       title: Text(
-        detail?.title ?? release.title,
+        detail == null
+            ? displayReleaseTitle(release)
+            : displayDetailTitle(detail!),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
+      actions: [_BookmarkMenuButton(releaseId: release.id)],
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -146,187 +164,319 @@ class _DetailBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final description = detail.description ?? release.description;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 108,
-            child: ReleasePoster(
-              imageUrl: detail.thumbnailUrl ?? release.posterUrl,
-              borderRadius: 12,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  detail.title,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
-                  ),
-                ),
-                if (release.originalTitle.isNotEmpty &&
-                    release.originalTitle != detail.title) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    release.originalTitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: [
-                    if (release.currentEpisodes != null)
-                      MetadataChip(
-                        icon: Icons.video_library_outlined,
-                        label: '${release.currentEpisodes} серий',
-                      ),
-                    if (release.rating != null)
-                      MetadataChip(
-                        icon: Icons.star_outline,
-                        label: release.rating!,
-                      ),
-                    if (release.year != null)
-                      MetadataChip(
-                        icon: Icons.calendar_today_outlined,
-                        label: '${release.year}',
-                      ),
-                    if (release.type != null)
-                      MetadataChip(
-                        icon: Icons.movie_outlined,
-                        label: release.type!,
-                      ),
-                  ],
-                ),
-                if ((detail.description ?? release.description)
-                        ?.trim()
-                        .isNotEmpty ==
-                    true) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    detail.description ?? release.description!,
-                    maxLines: expanded ? null : 5,
-                    overflow: expanded
-                        ? TextOverflow.visible
-                        : TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.32),
-                  ),
-                  TextButton(
-                    onPressed: onToggleDescription,
-                    child: Text(expanded ? 'Свернуть' : 'Показать полностью'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EpisodePreview extends StatelessWidget {
-  const _EpisodePreview({required this.detail, required this.state});
-
-  final DreamReleaseDetail detail;
-  final AsyncValue<DreamData<List<DreamEpisode>>> state;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Серии',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
+              SizedBox(
+                width: 108,
+                child: ReleasePoster(
+                  imageUrl: detail.thumbnailUrl ?? release.posterUrl,
+                  borderRadius: 12,
                 ),
               ),
-              const Spacer(),
-              TextButton(
-                onPressed: state.hasValue
-                    ? () => context.push('/episodes', extra: detail)
-                    : null,
-                child: const Text('Все серии'),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayDetailTitle(detail),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                    ),
+                    if (release.originalTitle.isNotEmpty &&
+                        release.originalTitle !=
+                            displayDetailTitle(detail)) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        release.originalTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        if (release.currentEpisodes != null)
+                          MetadataChip(
+                            icon: Icons.video_library_outlined,
+                            label: '${release.currentEpisodes} серий',
+                          ),
+                        if (release.rating != null)
+                          MetadataChip(
+                            icon: Icons.star_outline,
+                            label: release.rating!,
+                          ),
+                        if (release.year != null)
+                          MetadataChip(
+                            icon: Icons.calendar_today_outlined,
+                            label: '${release.year}',
+                          ),
+                        if (release.type != null)
+                          MetadataChip(
+                            icon: Icons.movie_outlined,
+                            label: release.type!,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          state.when(
-            loading: () => const _EpisodePreviewSkeleton(),
-            error: (error, stackTrace) => AppErrorView(error: error),
-            data: (data) {
-              final episodes = data.value.take(6).toList();
-              return Column(
-                children: [
-                  if (data.isStale) const StaleCacheBanner(),
-                  for (final episode in episodes)
-                    _EpisodeRow(
-                      episode: episode,
-                      onTap: () => _showStreams(context, episode),
-                    ),
-                ],
-              );
-            },
-          ),
+          if (description?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 18),
+            Text(
+              'Описание',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description!,
+              maxLines: expanded ? null : 8,
+              overflow: expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.36),
+            ),
+            TextButton(
+              onPressed: onToggleDescription,
+              child: Text(expanded ? 'Свернуть' : 'Показать полностью'),
+            ),
+          ],
         ],
       ),
     );
   }
+}
 
-  void _showStreams(BuildContext context, DreamEpisode episode) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) =>
-          _EpisodeStreamsSheet(release: detail.release, episode: episode),
+class _BookmarkMenuButton extends ConsumerWidget {
+  const _BookmarkMenuButton({required this.releaseId});
+
+  final int releaseId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final status = ref.watch(releaseBookmarkProvider(releaseId));
+    final controller = ref.read(releaseBookmarkProvider(releaseId).notifier);
+
+    return PopupMenuButton<Object>(
+      tooltip: 'Закладки',
+      icon: Icon(status == null ? Icons.bookmark_border : Icons.bookmark),
+      onSelected: (value) {
+        if (value == _BookmarkAction.remove) {
+          controller.remove();
+        } else if (value is ReleaseBookmarkStatus) {
+          controller.setStatus(value);
+        }
+      },
+      itemBuilder: (context) => [
+        for (final value in ReleaseBookmarkStatus.values)
+          PopupMenuItem<Object>(
+            value: value,
+            child: Row(
+              children: [
+                Icon(
+                  status == value ? Icons.check : Icons.bookmark_border,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(value.label),
+              ],
+            ),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem<Object>(
+          value: _BookmarkAction.remove,
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 20),
+              SizedBox(width: 12),
+              Text('Удалить'),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _EpisodeRow extends StatelessWidget {
-  const _EpisodeRow({required this.episode, required this.onTap});
+enum _BookmarkAction { remove }
 
-  final DreamEpisode episode;
-  final VoidCallback onTap;
+class _EpisodeListSheet extends ConsumerStatefulWidget {
+  const _EpisodeListSheet({required this.detail});
+
+  final DreamReleaseDetail detail;
+
+  @override
+  ConsumerState<_EpisodeListSheet> createState() => _EpisodeListSheetState();
+}
+
+class _EpisodeListSheetState extends ConsumerState<_EpisodeListSheet> {
+  bool _ascending = true;
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(releaseEpisodesProvider(widget.detail));
+    final theme = Theme.of(context);
+
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.82,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Серии',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.arrow_downward),
+                        label: Text('1...'),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.arrow_upward),
+                        label: Text('...1'),
+                      ),
+                    ],
+                    selected: {_ascending},
+                    onSelectionChanged: (value) {
+                      setState(() => _ascending = value.first);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: state.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, stackTrace) => AppErrorView(
+                    error: error,
+                    onRetry: () =>
+                        ref.invalidate(releaseEpisodesProvider(widget.detail)),
+                  ),
+                  data: (data) {
+                    final queue = [...data.value]
+                      ..sort((a, b) => a.ordinal.compareTo(b.ordinal));
+                    final visible = _ascending
+                        ? queue
+                        : queue.reversed.toList();
+
+                    return Column(
+                      children: [
+                        if (data.isStale) const StaleCacheBanner(),
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: visible.length,
+                            separatorBuilder: (context, index) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) => _EpisodeRow(
+                              release: widget.detail.release,
+                              episode: visible[index],
+                              episodeQueue: queue,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EpisodeRow extends ConsumerWidget {
+  const _EpisodeRow({
+    required this.release,
+    required this.episode,
+    required this.episodeQueue,
+  });
+
+  final DreamRelease release;
+  final DreamEpisode episode;
+  final List<DreamEpisode> episodeQueue;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progress = ref.watch(
+      episodeWatchEntryProvider((release: release, episode: episode)),
+    );
+
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(child: Text('${episode.ordinal}')),
       title: Text(episode.title),
-      subtitle: const Text(
-        'Прогресс просмотра появится после подключения проигрывателя',
+      subtitle: progress.when(
+        loading: () => const Text('Проверяем прогресс...'),
+        error: (error, stackTrace) => const Text('Прогресс не загружен'),
+        data: (entry) => Text(_progressLabel(entry)),
       ),
       trailing: const Icon(Icons.play_arrow),
-      onTap: onTap,
+      onTap: () => _showStreams(context, ref),
+    );
+  }
+
+  String _progressLabel(ContinueWatchingItem? entry) {
+    if (entry == null) return 'Не просмотрено';
+    if (entry.isWatched) return 'Просмотрено';
+    return 'Остановились на ${_formatDuration(entry.position)}';
+  }
+
+  void _showStreams(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => _EpisodeStreamsSheet(
+        release: release,
+        episode: episode,
+        episodeQueue: episodeQueue,
+      ),
     );
   }
 }
 
 class _EpisodeStreamsSheet extends ConsumerWidget {
-  const _EpisodeStreamsSheet({required this.release, required this.episode});
+  const _EpisodeStreamsSheet({
+    required this.release,
+    required this.episode,
+    required this.episodeQueue,
+  });
 
   final DreamRelease release;
   final DreamEpisode episode;
+  final List<DreamEpisode> episodeQueue;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -371,6 +521,7 @@ class _EpisodeStreamsSheet extends ConsumerWidget {
                       episode: episode,
                       streams: data.value,
                       initialStream: stream,
+                      episodeQueue: episodeQueue,
                     ),
                   );
                 },
@@ -445,24 +596,6 @@ class _DetailSkeleton extends StatelessWidget {
   }
 }
 
-class _EpisodePreviewSkeleton extends StatelessWidget {
-  const _EpisodePreviewSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.surfaceContainerHighest;
-    return Column(
-      children: List.generate(
-        4,
-        (index) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: _SkeletonBlock(color: color, height: 46, widthFactor: 1),
-        ),
-      ),
-    );
-  }
-}
-
 class _SkeletonBlock extends StatelessWidget {
   const _SkeletonBlock({
     required this.color,
@@ -487,4 +620,11 @@ class _SkeletonBlock extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatDuration(Duration duration) {
+  final hours = duration.inHours;
+  final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
 }

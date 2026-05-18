@@ -238,7 +238,7 @@ class _DetailBody extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          _BookmarkStatusButton(releaseId: release.id),
+          _BookmarkStatusButton(release: release),
           if (description?.trim().isNotEmpty == true) ...[
             const SizedBox(height: 18),
             Text(
@@ -266,13 +266,14 @@ class _DetailBody extends StatelessWidget {
 }
 
 class _BookmarkStatusButton extends ConsumerWidget {
-  const _BookmarkStatusButton({required this.releaseId});
+  const _BookmarkStatusButton({required this.release});
 
-  final int releaseId;
+  final DreamRelease release;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final releaseId = release.id;
     final status = ref.watch(releaseBookmarkProvider(releaseId));
     final controller = ref.read(releaseBookmarkProvider(releaseId).notifier);
     final label = status?.label ?? 'Добавить в закладки';
@@ -285,7 +286,7 @@ class _BookmarkStatusButton extends ConsumerWidget {
         if (value == _BookmarkAction.remove) {
           controller.remove();
         } else if (value is ReleaseBookmarkStatus) {
-          controller.setStatus(value);
+          controller.setStatus(value, release: release);
         }
       },
       itemBuilder: (context) => [

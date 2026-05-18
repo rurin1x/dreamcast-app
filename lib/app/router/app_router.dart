@@ -67,6 +67,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   key: state.pageKey,
                   child: const LibraryScreen(),
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'status/:status',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    pageBuilder: (context, state) {
+                      final status = libraryStatusFromName(
+                        state.pathParameters['status'],
+                      );
+                      return _sharedAxisPage(
+                        key: state.pageKey,
+                        child: status == null
+                            ? const _MissingRouteDataScreen()
+                            : LibraryStatusScreen(status: status),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

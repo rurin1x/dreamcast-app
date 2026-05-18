@@ -51,24 +51,16 @@ class ScheduleScreen extends ConsumerWidget {
               slivers: [
                 if (data.isStale)
                   const SliverToBoxAdapter(child: StaleCacheBanner()),
-                for (final day in schedule.days) ...[
-                  SliverToBoxAdapter(child: _DayHeader(day: day)),
-                  if (day.releases.isEmpty)
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(16, 4, 16, 18),
-                        child: Text('На этот день релизов нет.'),
-                      ),
-                    )
-                  else
-                    _ScheduleGrid(
-                      releases: day.releases,
+                for (final day in schedule.days)
+                  SliverToBoxAdapter(
+                    child: _ScheduleDaySection(
+                      day: day,
                       onTap: (release) => context.push(
                         '/release/${release.id}',
                         extra: release,
                       ),
                     ),
-                ],
+                  ),
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ),
@@ -84,66 +76,114 @@ class ScheduleScreen extends ConsumerWidget {
   }
 }
 
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.day});
+class _ScheduleDaySection extends StatelessWidget {
+  const _ScheduleDaySection({required this.day, required this.onTap});
 
   final ReleaseScheduleDay day;
+  final ValueChanged<DreamRelease> onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final width = MediaQuery.sizeOf(context).width;
+    final cardWidth = width >= 840
+        ? 132.0
+        : width >= 600
+        ? 122.0
+        : 112.0;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            day.title,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _DayStrip(day: day),
           ),
-          const SizedBox(width: 8),
-          Text(
-            '${day.releases.length}',
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          const SizedBox(height: 8),
+          if (day.releases.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
+              child: Text(
+                'На этот день релизов нет.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 224,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: day.releases.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  final release = day.releases[index];
+                  return SizedBox(
+                    width: cardWidth,
+                    child: ReleaseCard(
+                      release: release,
+                      onTap: () => onTap(release),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _ScheduleGrid extends StatelessWidget {
-  const _ScheduleGrid({required this.releases, required this.onTap});
+class _DayStrip extends StatelessWidget {
+  const _DayStrip({required this.day});
 
-  final List<DreamRelease> releases;
-  final ValueChanged<DreamRelease> onTap;
+  final ReleaseScheduleDay day;
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final crossAxisCount = width >= 840
-        ? 6
-        : width >= 600
-        ? 4
-        : 3;
+    final theme = Theme.of(context);
 
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
-      sliver: SliverGrid.builder(
-        itemCount: releases.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 6,
-          childAspectRatio: 0.49,
+    return Material(
+      color: theme.colorScheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 9, 12, 9),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                day.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                child: Text(
+                  '${day.releases.length}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSecondaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        itemBuilder: (context, index) {
-          final release = releases[index];
-          return ReleaseCard(release: release, onTap: () => onTap(release));
-        },
       ),
     );
   }

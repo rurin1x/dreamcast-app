@@ -387,12 +387,18 @@ class _ContinueWatchingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final progress = item.progress;
+    final borderColor = theme.colorScheme.outlineVariant.withValues(
+      alpha: 0.75,
+    );
 
     return SizedBox(
       width: 268,
       child: Material(
         color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: borderColor),
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -448,7 +454,23 @@ class _ContinueWatchingCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Icon(Icons.play_arrow),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
+                    color: theme.colorScheme.primaryContainer.withValues(
+                      alpha: 0.45,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(7),
+                    child: Icon(
+                      Icons.play_arrow,
+                      size: 22,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

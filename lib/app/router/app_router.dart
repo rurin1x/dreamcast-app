@@ -1,6 +1,5 @@
 import 'package:animations/animations.dart';
 import 'package:dream_cast/app/widgets/adaptive_app_shell.dart';
-import 'package:dream_cast/features/history/presentation/history_screen.dart';
 import 'package:dream_cast/features/home/presentation/home_screen.dart';
 import 'package:dream_cast/features/library/presentation/library_screen.dart';
 import 'package:dream_cast/features/onboarding/presentation/onboarding_screen.dart';
@@ -13,6 +12,7 @@ import 'package:dream_cast/features/releases/domain/release.dart';
 import 'package:dream_cast/features/releases/presentation/episode_list_screen.dart';
 import 'package:dream_cast/features/releases/presentation/release_detail_screen.dart';
 import 'package:dream_cast/features/releases/presentation/search_screen.dart';
+import 'package:dream_cast/features/schedule/presentation/schedule_screen.dart';
 import 'package:dream_cast/features/settings/presentation/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +21,7 @@ import 'package:go_router/go_router.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _homeNavigatorKey = GlobalKey<NavigatorState>();
 final _libraryNavigatorKey = GlobalKey<NavigatorState>();
-final _historyNavigatorKey = GlobalKey<NavigatorState>();
+final _scheduleNavigatorKey = GlobalKey<NavigatorState>();
 final _settingsNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -71,13 +71,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
           StatefulShellBranch(
-            navigatorKey: _historyNavigatorKey,
+            navigatorKey: _scheduleNavigatorKey,
             routes: [
               GoRoute(
-                path: '/history',
+                path: '/schedule',
                 pageBuilder: (context, state) => _fadeThroughPage(
                   key: state.pageKey,
-                  child: const HistoryScreen(),
+                  child: const ScheduleScreen(),
                 ),
               ),
             ],

@@ -111,7 +111,6 @@ class _HeaderSliver extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      actions: [_BookmarkMenuButton(releaseId: release.id)],
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -238,6 +237,8 @@ class _DetailBody extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          _BookmarkStatusButton(releaseId: release.id),
           if (description?.trim().isNotEmpty == true) ...[
             const SizedBox(height: 18),
             Text(
@@ -264,19 +265,22 @@ class _DetailBody extends StatelessWidget {
   }
 }
 
-class _BookmarkMenuButton extends ConsumerWidget {
-  const _BookmarkMenuButton({required this.releaseId});
+class _BookmarkStatusButton extends ConsumerWidget {
+  const _BookmarkStatusButton({required this.releaseId});
 
   final int releaseId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final status = ref.watch(releaseBookmarkProvider(releaseId));
     final controller = ref.read(releaseBookmarkProvider(releaseId).notifier);
+    final label = status?.label ?? 'Добавить в закладки';
 
     return PopupMenuButton<Object>(
       tooltip: 'Закладки',
-      icon: Icon(status == null ? Icons.bookmark_border : Icons.bookmark),
+      position: PopupMenuPosition.under,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       onSelected: (value) {
         if (value == _BookmarkAction.remove) {
           controller.remove();
@@ -311,6 +315,41 @@ class _BookmarkMenuButton extends ConsumerWidget {
           ),
         ),
       ],
+      child: Material(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            child: Row(
+              children: [
+                Icon(
+                  status == null ? Icons.bookmark_add_outlined : Icons.bookmark,
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.keyboard_arrow_down,
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

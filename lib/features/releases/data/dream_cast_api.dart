@@ -71,6 +71,23 @@ final class DreamCastApi {
     return html;
   }
 
+  Future<String> getScheduleHtml({CancelToken? cancelToken}) async {
+    final response = await _requestWithRetry<String>(
+      () => _dio.get<String>(
+        '/home/schedule',
+        cancelToken: cancelToken,
+        options: Options(responseType: ResponseType.plain),
+      ),
+      cancelToken: cancelToken,
+    );
+
+    final html = response.data ?? '';
+    logDreamCastDiagnostic(
+      'API schedule HTML: status=${response.statusCode}, bytes=${html.length}',
+    );
+    return html;
+  }
+
   Future<String> getPlayerScript(String url, {CancelToken? cancelToken}) async {
     final response = await _requestWithRetry<String>(
       () => _dio.get<String>(

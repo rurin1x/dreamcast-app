@@ -4,20 +4,28 @@ import 'package:dream_cast/features/releases/data/parsers/dream_cast_html_parser
 import 'package:dream_cast/features/releases/data/parsers/dream_stream_extractor.dart';
 import 'package:dream_cast/features/releases/data/parsers/playerjs_playlist_decoder.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
+import 'package:dream_cast/features/schedule/data/dream_cast_schedule_parser.dart';
+import 'package:dream_cast/features/schedule/domain/release_schedule.dart';
 
 final class DreamCastParserService {
   const DreamCastParserService({
     this.htmlParser = const DreamCastHtmlParser(),
+    this.scheduleParser = const DreamCastScheduleParser(),
     this.playlistDecoder = const PlayerJsPlaylistDecoder(),
     this.streamExtractor = const DreamStreamExtractor(),
   });
 
   final DreamCastHtmlParser htmlParser;
+  final DreamCastScheduleParser scheduleParser;
   final PlayerJsPlaylistDecoder playlistDecoder;
   final DreamStreamExtractor streamExtractor;
 
   ParsedDreamReleasePage parseReleasePage(String html) {
     return htmlParser.parse(html);
+  }
+
+  ReleaseSchedule parseSchedule(String html) {
+    return scheduleParser.parse(html);
   }
 
   PlayerPlaylistDto decodePlaylist({

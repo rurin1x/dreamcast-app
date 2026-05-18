@@ -8,6 +8,7 @@ import 'package:dream_cast/features/releases/data/parsers/playerjs_crypto.dart';
 import 'package:dream_cast/features/releases/data/parsers/playerjs_playlist_decoder.dart';
 import 'package:dream_cast/features/releases/data/parsers/playerjs_unpacker.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
+import 'package:dream_cast/features/schedule/data/dream_cast_schedule_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -209,6 +210,60 @@ void main() {
       expect(streams.first.type, DreamStreamType.hls);
       expect(streams.first.quality, 1080);
       expect(streams.last.type, DreamStreamType.dash);
+    });
+  });
+
+  group('DreamCastScheduleParser', () {
+    test('extracts day sections and normalizes poster URLs', () {
+      const html = '''
+      <main id="Content">
+        <div class="col-md-12">
+          <div class="timetable"><h4>Понедельник</h4></div>
+          <div class="row" id="content">
+            <div class="col-md-3 col-12 poster">
+              <a href="/home/release/561-test-title">
+                <div class="poster-rating">4,5</div>
+                <div class="poster-img" style="background:url('//cache.dreamerscast.com/releases/561/poster.webp')"></div>
+                <span class="s-title-russian">Русское название</span>
+                <span class="s-title-original">Romaji Title</span>
+                <div class="poster_info">
+                  <div class="s-item"><b>Тип: </b></div><span class="s-type-color">TV</span>
+                </div>
+                <div class="poster_info">
+                  <div class="s-item"><b>Год: </b></div><span>2026</span>
+                </div>
+                <div class="poster_info">
+                  <div class="s-item"><b>Эпизодов: </b></div><span>3 из 12</span>
+                </div>
+              </a>
+            </div>
+          </div>
+          <div class="timetable"><h4>Вторник</h4></div>
+          <div class="row" id="content"></div>
+        </div>
+      </main>
+      ''';
+
+      final schedule = const DreamCastScheduleParser().parse(html);
+      final release = schedule.days.first.releases.single;
+
+      expect(schedule.days, hasLength(2));
+      expect(schedule.days.first.title, 'Понедельник');
+      expect(release.id, 561);
+      expect(release.title, 'Русское название');
+      expect(release.originalTitle, 'Romaji Title');
+      expect(
+        release.url,
+        'https://dreamerscast.com/home/release/561-test-title',
+      );
+      expect(
+        release.posterUrl,
+        'https://cache.dreamerscast.com/releases/561/poster.webp',
+      );
+      expect(release.type, 'TV');
+      expect(release.year, 2026);
+      expect(release.currentEpisodes, 3);
+      expect(release.totalEpisodes, 12);
     });
   });
 

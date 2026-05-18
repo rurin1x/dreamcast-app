@@ -6,6 +6,7 @@ import 'package:dream_cast/features/releases/data/dream_cast_diagnostics.dart';
 import 'package:dream_cast/features/releases/data/dream_cast_parser_service.dart';
 import 'package:dream_cast/features/releases/data/dto/dream_release_dto.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
+import 'package:dream_cast/features/schedule/domain/release_schedule.dart';
 
 final class DreamData<T> {
   const DreamData({
@@ -31,6 +32,7 @@ final class ReleaseRepository {
   static const releasesTtl = Duration(minutes: 20);
   static const detailsTtl = Duration(hours: 8);
   static const streamsTtl = Duration(hours: 2);
+  static const scheduleTtl = Duration(minutes: 30);
 
   final DreamCastApi _api;
   final CacheRepository _cache;
@@ -133,6 +135,44 @@ final class ReleaseRepository {
         'errorType=${error.runtimeType}, error=$error, stackTrace=$stackTrace',
       );
       final cached = await _detailFromCache(cacheKey, release);
+      if (cached != null) return cached;
+      rethrow;
+    }
+  }
+
+  Future<DreamData<ReleaseSchedule>> getSchedule({
+    CancelToken? cancelToken,
+  }) async {
+    const cacheKey = 'dreamcast:schedule';
+
+    try {
+      final html = await _api.getScheduleHtml(cancelToken: cancelToken);
+      final schedule = _parser.parseSchedule(html);
+      final itemCount = schedule.days.fold<int>(
+        0,
+        (sum, day) => sum + day.releases.length,
+      );
+      if (itemCount == 0) {
+        throw const ParserException(
+          'Расписание загрузилось, но релизы в нём не найдены.',
+        );
+      }
+      logDreamCastDiagnostic(
+        'Repository schedule parsed: days=${schedule.days.length}, '
+        'items=$itemCount',
+      );
+      await _cache.putJson(
+        cacheKey,
+        _scheduleToJson(schedule),
+        ttl: scheduleTtl,
+      );
+      return DreamData(value: schedule, isStale: false);
+    } catch (error, stackTrace) {
+      logDreamCastDiagnostic(
+        'Repository schedule failed: errorType=${error.runtimeType}, '
+        'error=$error, stackTrace=$stackTrace',
+      );
+      final cached = await _scheduleFromCache(cacheKey);
       if (cached != null) return cached;
       rethrow;
     }
@@ -312,6 +352,23 @@ final class ReleaseRepository {
     );
   }
 
+  Future<DreamData<ReleaseSchedule>?> _scheduleFromCache(
+    String cacheKey,
+  ) async {
+    final cached = await _cache.getJsonMap(cacheKey);
+    if (cached == null) return null;
+    final daysRaw = cached.value['days'];
+    if (daysRaw is! List) return null;
+
+    final days = daysRaw
+        .whereType<Map>()
+        .map((item) => _scheduleDayFromJson(item.cast<String, Object?>()))
+        .toList(growable: false);
+    if (days.every((day) => day.releases.isEmpty)) return null;
+
+    return DreamData(value: ReleaseSchedule(days: days), isStale: true);
+  }
+
   Map<String, Object?> _detailToJson(DreamReleaseDetail detail) => {
     'title': detail.title,
     'description': detail.description,
@@ -402,6 +459,74 @@ final class ReleaseRepository {
           ) ??
           const {},
       expiresAt: DateTime.tryParse(json['expiresAt'] as String? ?? ''),
+    );
+  }
+
+  Map<String, Object?> _scheduleToJson(ReleaseSchedule schedule) => {
+    'days': schedule.days
+        .map(
+          (day) => {
+            'title': day.title,
+            'releases': day.releases.map(_releaseToJson).toList(),
+          },
+        )
+        .toList(),
+  };
+
+  ReleaseScheduleDay _scheduleDayFromJson(Map<String, Object?> json) {
+    final releasesRaw = json['releases'];
+    return ReleaseScheduleDay(
+      title: json['title'] as String? ?? '',
+      releases: releasesRaw is List
+          ? releasesRaw
+                .whereType<Map>()
+                .map((item) => _releaseFromJson(item.cast<String, Object?>()))
+                .toList(growable: false)
+          : const [],
+    );
+  }
+
+  Map<String, Object?> _releaseToJson(DreamRelease release) => {
+    'id': release.id,
+    'title': release.title,
+    'originalTitle': release.originalTitle,
+    'url': release.url,
+    'posterUrl': release.posterUrl,
+    'wallUrl': release.wallUrl,
+    'description': release.description,
+    'status': release.status,
+    'type': release.type,
+    'year': release.year,
+    'season': release.season,
+    'genres': release.genres,
+    'studio': release.studio,
+    'durationMinutes': release.durationMinutes,
+    'totalEpisodes': release.totalEpisodes,
+    'currentEpisodes': release.currentEpisodes,
+    'rating': release.rating,
+    'raw': release.raw,
+  };
+
+  DreamRelease _releaseFromJson(Map<String, Object?> json) {
+    return DreamRelease(
+      id: (json['id'] as num).toInt(),
+      title: json['title'] as String? ?? '',
+      originalTitle: json['originalTitle'] as String? ?? '',
+      url: json['url'] as String? ?? '',
+      posterUrl: json['posterUrl'] as String?,
+      wallUrl: json['wallUrl'] as String?,
+      description: json['description'] as String?,
+      status: json['status'] as String?,
+      type: json['type'] as String?,
+      year: (json['year'] as num?)?.toInt(),
+      season: json['season'] as String?,
+      genres: json['genres'] as String?,
+      studio: json['studio'] as String?,
+      durationMinutes: (json['durationMinutes'] as num?)?.toInt(),
+      totalEpisodes: (json['totalEpisodes'] as num?)?.toInt(),
+      currentEpisodes: (json['currentEpisodes'] as num?)?.toInt(),
+      rating: json['rating'] as String?,
+      raw: (json['raw'] as Map?)?.cast<String, Object?>() ?? const {},
     );
   }
 }

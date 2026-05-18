@@ -31,9 +31,9 @@ class AdaptiveAppShell extends StatelessWidget {
                   label: Text('Библиотека'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.history_outlined),
-                  selectedIcon: Icon(Icons.history),
-                  label: Text('История'),
+                  icon: Icon(Icons.calendar_month_outlined),
+                  selectedIcon: Icon(Icons.calendar_month),
+                  label: Text('Календарь'),
                 ),
                 NavigationRailDestination(
                   icon: Icon(Icons.settings_outlined),
@@ -66,9 +66,9 @@ class AdaptiveAppShell extends StatelessWidget {
             label: 'Библиотека',
           ),
           NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'История',
+            icon: Icon(Icons.calendar_month_outlined),
+            selectedIcon: Icon(Icons.calendar_month),
+            label: 'Календарь',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

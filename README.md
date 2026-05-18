@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" width="96" height="96" alt="Dream Cast app icon">
+  <img src="icon.png" width="96" height="96" alt="Dream Cast app icon">
 </p>
 
 <h1 align="center">Dream Cast</h1>
 
 <p align="center">
-  Современный Android-клиент для просмотра релизов Dream Cast.
+  Современный Android-клиент для просмотра аниме в озвучке Dream Cast.
 </p>
 
 <p align="center">
@@ -15,27 +15,66 @@
 </p>
 
 ---
+<br>
+<p align="center">
+  <a href="https://github.com/rurin1x/dreamcast-app/releases/latest">
+    <img alt="Download APK" src="https://img.shields.io/badge/Download-APK-2ea44f?style=for-the-badge&logo=android&logoColor=white">
+  </a>
+</p>
 
-Основной фокус — быстро открыть тайтл, выбрать серию и спокойно смотреть.
 
-Приложение написано на Flutter, но по ощущениям старается быть именно Android-приложением: Material 3, динамические цвета Monet, компактная навигация, нормальная работа с жестами, PiP и локальное хранение прогресса.
+
+
+## ⚠️ Региональные ограничения
+
+Dream Cast может быть недоступен в некоторых странах и сетях из-за ограничений провайдеров.
+
+Подтверждённые проблемы доступа:
+**Россия,** Austria, Belgium, Canada, China, Czech Republic, Denmark, Estonia, France, Germany, Greece, Hong Kong, Hungary, India, Ireland, Italy, Japan, Luxembourg, Malta, Portugal, Romania, Slovakia, Slovenia, Spain, United Kingdom, United States Minor Outlying Islands и United States.
+
+Если приложение не загружает релизы или видео — попробуйте использовать VPN (Финляндия или Нидерланды).
+
+
+
+## Скриншоты
+
+<p align="center">
+  <img src="screenshots/home.jpg" width="30%">
+  <img src="screenshots/detail.jpg" width="30%">
+  <img src="screenshots/s_view.jpg" width="30%">
+
+  
+</p>
+<p align="center">
+    <img src="screenshots/library.jpg" width="30%">
+    <img src="screenshots/calendar.jpg" width="30%">
+    <img src="screenshots/settings.jpg" width="30%">
+</p>
+
+<p align="center">
+  <img src="screenshots/player.jpg" width="90%">
+</p>
 
 ## Что умеет
 
-- Получать все релизы с сайта Dream Cast.
-- Показывает постеры, описания, метаданные и список серий.
-- Поддерживает поиск по тайтлам.
-- Хранит закладки и библиотеку пользователя.
-- Запоминает прогресс просмотра.
-- Поддерживает HLS и DASH-потоки.
-- Работает с Picture-in-Picture.
-- Показывает календарь релизов.
-- Умеет уведомлять о новых сериях в подписанных тайтлах.
-- Использует локальный кэш.
+- Просмотр серий в озвучке Dream Cast
+- Постеры, описания и метаданные
+- Поиск по тайтлам
+- Закладки и библиотека
+- Сохранение прогресса просмотра
+- Поддержка HLS и DASH
+- Picture-in-Picture
+- Календарь релизов
+- Уведомления о новых сериях
+- Локальный кэш
+
+
+
 
 ## Внутри
 
-Проект не использует WebView как основу интерфейса. Данные проходят через собственный слой:
+Приложение не использует WebView.
+Все данные обрабатываются напрямую через парсер и локальный слой приложения:
 
 ```text
 Dream Cast
@@ -78,24 +117,7 @@ flutter build apk --debug
 flutter build apk --release
 ```
 
-Перед публичной раздачей APK нужно настроить свой release-keystore. Ключ подписи должен быть постоянным: если потерять его, пользователи не смогут обновиться поверх старой версии.
 
-Создать ключ можно так:
-
-```bash
-keytool -genkey -v -keystore android/app/dreamcast-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias dreamcast
-```
-
-После этого создайте локальный файл `android/key.properties`:
-
-```properties
-storePassword=ВАШ_ПАРОЛЬ_ОТ_KEYSTORE
-keyPassword=ВАШ_ПАРОЛЬ_ОТ_КЛЮЧА
-keyAlias=dreamcast
-storeFile=app/dreamcast-release.jks
-```
-
-`android/key.properties` и `.jks` уже добавлены в `.gitignore`. Не коммитьте их в репозиторий и сделайте резервную копию ключа в надёжном месте.
 
 ## Структура
 
@@ -119,11 +141,14 @@ lib/
 
 Проект распространяется по лицензии GPLv3.
 
-Некоторые идеи парсинга основаны на `anicli-api` под лицензией MIT. Реализация для приложения переписана на Dart.
+Некоторые идеи парсинга вдохновлены проектом [anicli-api](https://github.com/vypivshiy/anicli-api) (MIT License).
+
+Реализация для приложения переписана на Dart.
 
 ## Благодарности
 
-Спасибо Dream Cast за релизы, open-source сообществу за инструменты и людям, которые спокойно тестировали приложение, пока оно училось быть нормальным Android-клиентом.
+Спасибо Dream Cast за прекрасную озвучку, open-source сообществу за инструменты.
+Спасибо людям, которые тестировали приложение и помогали находить проблемы на ранних этапах разработки.
 
 ---
 

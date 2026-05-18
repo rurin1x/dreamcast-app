@@ -30,10 +30,15 @@ final libraryBookmarksProvider =
     );
 
 final class ReleaseBookmarkEntry {
-  const ReleaseBookmarkEntry({required this.status, required this.release});
+  const ReleaseBookmarkEntry({
+    required this.status,
+    required this.release,
+    required this.updatedAt,
+  });
 
   final ReleaseBookmarkStatus status;
   final DreamRelease release;
+  final DateTime updatedAt;
 }
 
 final class LibraryBookmarksController
@@ -51,7 +56,11 @@ final class LibraryBookmarksController
       if (entry != null) entries.add(entry);
     }
 
-    entries.sort((a, b) => a.release.title.compareTo(b.release.title));
+    entries.sort((a, b) {
+      final byDate = b.updatedAt.compareTo(a.updatedAt);
+      if (byDate != 0) return byDate;
+      return a.release.title.compareTo(b.release.title);
+    });
     return entries;
   }
 }
@@ -81,7 +90,13 @@ final class ReleaseBookmarkController extends Notifier<ReleaseBookmarkStatus?> {
       await preferences.setString(
         '$itemPrefix$_releaseId',
         jsonEncode(
-          _entryToJson(ReleaseBookmarkEntry(status: status, release: release)),
+          _entryToJson(
+            ReleaseBookmarkEntry(
+              status: status,
+              release: release,
+              updatedAt: DateTime.now(),
+            ),
+          ),
         ),
       );
     }
@@ -117,11 +132,15 @@ ReleaseBookmarkEntry? _entryFromJson(String raw) {
   return ReleaseBookmarkEntry(
     status: status,
     release: _releaseFromJson(releaseRaw.cast<String, Object?>()),
+    updatedAt:
+        DateTime.tryParse(decoded['updatedAt'] as String? ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0),
   );
 }
 
 Map<String, Object?> _entryToJson(ReleaseBookmarkEntry entry) => {
   'status': entry.status.name,
+  'updatedAt': entry.updatedAt.toIso8601String(),
   'release': _releaseToJson(entry.release),
 };
 

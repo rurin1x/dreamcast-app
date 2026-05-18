@@ -124,27 +124,30 @@ final class PlaybackRepository {
   }
 
   Stream<List<ContinueWatchingItem>> watchContinueWatching() {
-    return _database.watchRecentEntries().map(
-      (rows) => rows
-          .where((row) => !row.isWatched)
-          .map(
-            (row) => ContinueWatchingItem(
-              releaseId: row.releaseId,
-              episodeId: row.episodeId,
-              releaseTitle: row.releaseTitle,
-              episodeTitle: row.episodeTitle,
-              episodeOrdinal: row.episodeOrdinal,
-              position: Duration(milliseconds: row.positionMs),
-              duration: row.durationMs == null
-                  ? null
-                  : Duration(milliseconds: row.durationMs!),
-              updatedAt: row.updatedAt,
-              posterUrl: row.posterUrl,
-              isWatched: row.isWatched,
-            ),
-          )
-          .toList(growable: false),
-    );
+    return _database
+        .watchRecentEntries(limit: 50)
+        .map(
+          (rows) => uniqueRecentContinueWatchingItems(
+            rows
+                .where((row) => !row.isWatched)
+                .map(
+                  (row) => ContinueWatchingItem(
+                    releaseId: row.releaseId,
+                    episodeId: row.episodeId,
+                    releaseTitle: row.releaseTitle,
+                    episodeTitle: row.episodeTitle,
+                    episodeOrdinal: row.episodeOrdinal,
+                    position: Duration(milliseconds: row.positionMs),
+                    duration: row.durationMs == null
+                        ? null
+                        : Duration(milliseconds: row.durationMs!),
+                    updatedAt: row.updatedAt,
+                    posterUrl: row.posterUrl,
+                    isWatched: row.isWatched,
+                  ),
+                ),
+          ),
+        );
   }
 
   Future<PlaybackRequest?> restorePlaybackRequest(
@@ -204,6 +207,23 @@ final class PlaybackRepository {
       ),
     );
   }
+}
+
+List<ContinueWatchingItem> uniqueRecentContinueWatchingItems(
+  Iterable<ContinueWatchingItem> items, {
+  int limit = 5,
+}) {
+  final sorted = [...items]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  final seenReleaseIds = <String>{};
+  final result = <ContinueWatchingItem>[];
+
+  for (final item in sorted) {
+    if (!seenReleaseIds.add(item.releaseId)) continue;
+    result.add(item);
+    if (result.length == limit) break;
+  }
+
+  return result;
 }
 
 DreamStreamType _dreamStreamTypeFromName(String name) {

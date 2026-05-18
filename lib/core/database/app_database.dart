@@ -216,6 +216,15 @@ class AppDatabase extends _$AppDatabase {
         .getSingleOrNull();
   }
 
+  Stream<WatchEntry?> watchEntryChanges(String releaseId, String episodeId) {
+    return (select(watchEntries)..where(
+          (row) =>
+              row.releaseId.equals(releaseId) & row.episodeId.equals(episodeId),
+        ))
+        .watch()
+        .map((rows) => rows.isEmpty ? null : rows.first);
+  }
+
   Stream<List<WatchEntry>> watchRecentEntries({int limit = 12}) {
     return (select(watchEntries)
           ..orderBy([(row) => OrderingTerm.desc(row.updatedAt)])

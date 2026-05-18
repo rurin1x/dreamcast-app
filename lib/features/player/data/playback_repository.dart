@@ -48,21 +48,16 @@ final class PlaybackRepository {
     required DreamEpisode episode,
   }) async {
     final row = await _database.watchEntry('${release.id}', episode.id);
-    if (row == null) return null;
-    return ContinueWatchingItem(
-      releaseId: row.releaseId,
-      episodeId: row.episodeId,
-      releaseTitle: row.releaseTitle,
-      episodeTitle: row.episodeTitle,
-      episodeOrdinal: row.episodeOrdinal,
-      position: Duration(milliseconds: row.positionMs),
-      duration: row.durationMs == null
-          ? null
-          : Duration(milliseconds: row.durationMs!),
-      updatedAt: row.updatedAt,
-      posterUrl: row.posterUrl,
-      isWatched: row.isWatched,
-    );
+    return row == null ? null : _continueWatchingItemFromRow(row);
+  }
+
+  Stream<ContinueWatchingItem?> watchEpisodeWatchEntry({
+    required DreamRelease release,
+    required DreamEpisode episode,
+  }) {
+    return _database
+        .watchEntryChanges('${release.id}', episode.id)
+        .map((row) => row == null ? null : _continueWatchingItemFromRow(row));
   }
 
   Future<void> saveWatchProgress({
@@ -130,22 +125,7 @@ final class PlaybackRepository {
           (rows) => uniqueRecentContinueWatchingItems(
             rows
                 .where((row) => !row.isWatched)
-                .map(
-                  (row) => ContinueWatchingItem(
-                    releaseId: row.releaseId,
-                    episodeId: row.episodeId,
-                    releaseTitle: row.releaseTitle,
-                    episodeTitle: row.episodeTitle,
-                    episodeOrdinal: row.episodeOrdinal,
-                    position: Duration(milliseconds: row.positionMs),
-                    duration: row.durationMs == null
-                        ? null
-                        : Duration(milliseconds: row.durationMs!),
-                    updatedAt: row.updatedAt,
-                    posterUrl: row.posterUrl,
-                    isWatched: row.isWatched,
-                  ),
-                ),
+                .map(_continueWatchingItemFromRow),
           ),
         );
   }
@@ -257,4 +237,21 @@ VideoStreamType videoStreamTypeFromExtension(String extension) {
     'webm' => VideoStreamType.webm,
     _ => VideoStreamType.mp4,
   };
+}
+
+ContinueWatchingItem _continueWatchingItemFromRow(WatchEntry row) {
+  return ContinueWatchingItem(
+    releaseId: row.releaseId,
+    episodeId: row.episodeId,
+    releaseTitle: row.releaseTitle,
+    episodeTitle: row.episodeTitle,
+    episodeOrdinal: row.episodeOrdinal,
+    position: Duration(milliseconds: row.positionMs),
+    duration: row.durationMs == null
+        ? null
+        : Duration(milliseconds: row.durationMs!),
+    updatedAt: row.updatedAt,
+    posterUrl: row.posterUrl,
+    isWatched: row.isWatched,
+  );
 }

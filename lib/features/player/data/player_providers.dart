@@ -20,14 +20,14 @@ final playbackPositionProvider = FutureProvider.autoDispose
           .getPosition(releaseId: key.releaseId, episodeId: key.episodeId),
     );
 
-final episodeWatchEntryProvider = FutureProvider.autoDispose
+final episodeWatchEntryProvider = StreamProvider.autoDispose
     .family<
       ContinueWatchingItem?,
       ({DreamRelease release, DreamEpisode episode})
     >(
       (ref, key) => ref
           .watch(playbackRepositoryProvider)
-          .getEpisodeWatchEntry(release: key.release, episode: key.episode),
+          .watchEpisodeWatchEntry(release: key.release, episode: key.episode),
     );
 
 void invalidatePlaybackProgressForEpisodes(

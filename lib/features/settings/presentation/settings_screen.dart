@@ -187,12 +187,15 @@ class _SettingsBrandHeader extends StatelessWidget {
           border: Border.all(color: colors.outlineVariant),
         ),
         child: Text(
-          'DC',
-          style: theme.textTheme.displayLarge?.copyWith(
+          'Dream Cast',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.displaySmall?.copyWith(
             color: colors.primary,
             fontWeight: FontWeight.w900,
             letterSpacing: 0,
-            height: 0.9,
+            height: 1,
           ),
         ),
       ),

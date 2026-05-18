@@ -13,6 +13,7 @@ import 'package:dream_cast/features/releases/presentation/episode_list_screen.da
 import 'package:dream_cast/features/releases/presentation/release_detail_screen.dart';
 import 'package:dream_cast/features/releases/presentation/search_screen.dart';
 import 'package:dream_cast/features/schedule/presentation/schedule_screen.dart';
+import 'package:dream_cast/features/settings/presentation/about_app_screen.dart';
 import 'package:dream_cast/features/settings/presentation/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -115,6 +116,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     pageBuilder: (context, state) => _sharedAxisPage(
                       key: state.pageKey,
                       child: const ProfileScreen(),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'about',
+                    parentNavigatorKey: _rootNavigatorKey,
+                    pageBuilder: (context, state) => _sharedAxisPage(
+                      key: state.pageKey,
+                      child: const AboutAppScreen(),
                     ),
                   ),
                 ],

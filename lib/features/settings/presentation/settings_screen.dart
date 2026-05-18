@@ -63,10 +63,11 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Проигрыватель',
             subtitle: 'Основа для Media3, субтитров и прогресса',
           ),
-          const SettingsTile(
+          SettingsTile(
             icon: Icons.info_outline,
             title: 'О приложении',
-            subtitle: 'Dream Cast для Android',
+            subtitle: 'Разработчики',
+            onTap: () => context.push('/settings/about'),
           ),
         ],
       ),

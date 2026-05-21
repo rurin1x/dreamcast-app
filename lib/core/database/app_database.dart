@@ -80,6 +80,25 @@ class WatchEntries extends Table {
   Set<Column<Object>> get primaryKey => {releaseId, episodeId};
 }
 
+class DownloadedEpisodes extends Table {
+  IntColumn get releaseId => integer()();
+  TextColumn get episodeId => text()();
+  TextColumn get releaseTitle => text()();
+  TextColumn get episodeTitle => text()();
+  TextColumn get posterUrl => text().nullable()();
+  IntColumn get episodeOrdinal => integer()();
+  TextColumn get localFilePath => text()();
+  IntColumn get fileSize => integer()();
+  IntColumn get downloadedBytes => integer()();
+  TextColumn get status =>
+      text()(); // 'pending', 'downloading', 'completed', 'failed'
+  IntColumn get streamQuality => integer()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {releaseId, episodeId};
+}
+
 @DriftDatabase(
   tables: [
     Profiles,
@@ -88,13 +107,14 @@ class WatchEntries extends Table {
     PlaybackPositions,
     StreamSessions,
     WatchEntries,
+    DownloadedEpisodes,
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -102,8 +122,71 @@ class AppDatabase extends _$AppDatabase {
       if (from < 2) {
         await migrator.createTable(watchEntries);
       }
+      if (from < 3) {
+        await migrator.createTable(downloadedEpisodes);
+      }
     },
   );
+
+  Future<void> saveDownloadedEpisode(DownloadedEpisodesCompanion entry) {
+    return into(downloadedEpisodes).insertOnConflictUpdate(entry);
+  }
+
+  Future<int> updateDownloadedEpisode(
+    int releaseId,
+    String episodeId,
+    DownloadedEpisodesCompanion changes,
+  ) {
+    return (update(downloadedEpisodes)..where(
+          (row) =>
+              row.releaseId.equals(releaseId) & row.episodeId.equals(episodeId),
+        ))
+        .write(changes);
+  }
+
+  Future<DownloadedEpisode?> downloadedEpisode(
+    int releaseId,
+    String episodeId,
+  ) {
+    return (select(downloadedEpisodes)..where(
+          (row) =>
+              row.releaseId.equals(releaseId) & row.episodeId.equals(episodeId),
+        ))
+        .getSingleOrNull();
+  }
+
+  Stream<DownloadedEpisode?> watchDownloadedEpisode(
+    int releaseId,
+    String episodeId,
+  ) {
+    return (select(downloadedEpisodes)..where(
+          (row) =>
+              row.releaseId.equals(releaseId) & row.episodeId.equals(episodeId),
+        ))
+        .watchSingleOrNull();
+  }
+
+  Future<List<DownloadedEpisode>> allDownloadedEpisodes() {
+    return select(downloadedEpisodes).get();
+  }
+
+  Stream<List<DownloadedEpisode>> watchAllDownloadedEpisodes() {
+    return (select(
+      downloadedEpisodes,
+    )..orderBy([(row) => OrderingTerm.desc(row.createdAt)])).watch();
+  }
+
+  Future<int> deleteDownloadedEpisode(int releaseId, String episodeId) {
+    return (delete(downloadedEpisodes)..where(
+          (row) =>
+              row.releaseId.equals(releaseId) & row.episodeId.equals(episodeId),
+        ))
+        .go();
+  }
+
+  Future<int> deleteAllDownloadedEpisodes() {
+    return delete(downloadedEpisodes).go();
+  }
 
   Future<Profile?> activeProfile() {
     return (select(

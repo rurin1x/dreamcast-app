@@ -2557,6 +2557,745 @@ class WatchEntriesCompanion extends UpdateCompanion<WatchEntry> {
   }
 }
 
+class $DownloadedEpisodesTable extends DownloadedEpisodes
+    with TableInfo<$DownloadedEpisodesTable, DownloadedEpisode> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadedEpisodesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _releaseIdMeta = const VerificationMeta(
+    'releaseId',
+  );
+  @override
+  late final GeneratedColumn<int> releaseId = GeneratedColumn<int>(
+    'release_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodeIdMeta = const VerificationMeta(
+    'episodeId',
+  );
+  @override
+  late final GeneratedColumn<String> episodeId = GeneratedColumn<String>(
+    'episode_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _releaseTitleMeta = const VerificationMeta(
+    'releaseTitle',
+  );
+  @override
+  late final GeneratedColumn<String> releaseTitle = GeneratedColumn<String>(
+    'release_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodeTitleMeta = const VerificationMeta(
+    'episodeTitle',
+  );
+  @override
+  late final GeneratedColumn<String> episodeTitle = GeneratedColumn<String>(
+    'episode_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _posterUrlMeta = const VerificationMeta(
+    'posterUrl',
+  );
+  @override
+  late final GeneratedColumn<String> posterUrl = GeneratedColumn<String>(
+    'poster_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _episodeOrdinalMeta = const VerificationMeta(
+    'episodeOrdinal',
+  );
+  @override
+  late final GeneratedColumn<int> episodeOrdinal = GeneratedColumn<int>(
+    'episode_ordinal',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localFilePathMeta = const VerificationMeta(
+    'localFilePath',
+  );
+  @override
+  late final GeneratedColumn<String> localFilePath = GeneratedColumn<String>(
+    'local_file_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fileSizeMeta = const VerificationMeta(
+    'fileSize',
+  );
+  @override
+  late final GeneratedColumn<int> fileSize = GeneratedColumn<int>(
+    'file_size',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _downloadedBytesMeta = const VerificationMeta(
+    'downloadedBytes',
+  );
+  @override
+  late final GeneratedColumn<int> downloadedBytes = GeneratedColumn<int>(
+    'downloaded_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _streamQualityMeta = const VerificationMeta(
+    'streamQuality',
+  );
+  @override
+  late final GeneratedColumn<int> streamQuality = GeneratedColumn<int>(
+    'stream_quality',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    releaseId,
+    episodeId,
+    releaseTitle,
+    episodeTitle,
+    posterUrl,
+    episodeOrdinal,
+    localFilePath,
+    fileSize,
+    downloadedBytes,
+    status,
+    streamQuality,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'downloaded_episodes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadedEpisode> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('release_id')) {
+      context.handle(
+        _releaseIdMeta,
+        releaseId.isAcceptableOrUnknown(data['release_id']!, _releaseIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_releaseIdMeta);
+    }
+    if (data.containsKey('episode_id')) {
+      context.handle(
+        _episodeIdMeta,
+        episodeId.isAcceptableOrUnknown(data['episode_id']!, _episodeIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_episodeIdMeta);
+    }
+    if (data.containsKey('release_title')) {
+      context.handle(
+        _releaseTitleMeta,
+        releaseTitle.isAcceptableOrUnknown(
+          data['release_title']!,
+          _releaseTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_releaseTitleMeta);
+    }
+    if (data.containsKey('episode_title')) {
+      context.handle(
+        _episodeTitleMeta,
+        episodeTitle.isAcceptableOrUnknown(
+          data['episode_title']!,
+          _episodeTitleMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_episodeTitleMeta);
+    }
+    if (data.containsKey('poster_url')) {
+      context.handle(
+        _posterUrlMeta,
+        posterUrl.isAcceptableOrUnknown(data['poster_url']!, _posterUrlMeta),
+      );
+    }
+    if (data.containsKey('episode_ordinal')) {
+      context.handle(
+        _episodeOrdinalMeta,
+        episodeOrdinal.isAcceptableOrUnknown(
+          data['episode_ordinal']!,
+          _episodeOrdinalMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_episodeOrdinalMeta);
+    }
+    if (data.containsKey('local_file_path')) {
+      context.handle(
+        _localFilePathMeta,
+        localFilePath.isAcceptableOrUnknown(
+          data['local_file_path']!,
+          _localFilePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_localFilePathMeta);
+    }
+    if (data.containsKey('file_size')) {
+      context.handle(
+        _fileSizeMeta,
+        fileSize.isAcceptableOrUnknown(data['file_size']!, _fileSizeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_fileSizeMeta);
+    }
+    if (data.containsKey('downloaded_bytes')) {
+      context.handle(
+        _downloadedBytesMeta,
+        downloadedBytes.isAcceptableOrUnknown(
+          data['downloaded_bytes']!,
+          _downloadedBytesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_downloadedBytesMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('stream_quality')) {
+      context.handle(
+        _streamQualityMeta,
+        streamQuality.isAcceptableOrUnknown(
+          data['stream_quality']!,
+          _streamQualityMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_streamQualityMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {releaseId, episodeId};
+  @override
+  DownloadedEpisode map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadedEpisode(
+      releaseId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}release_id'],
+      )!,
+      episodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episode_id'],
+      )!,
+      releaseTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}release_title'],
+      )!,
+      episodeTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episode_title'],
+      )!,
+      posterUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}poster_url'],
+      ),
+      episodeOrdinal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_ordinal'],
+      )!,
+      localFilePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_file_path'],
+      )!,
+      fileSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}file_size'],
+      )!,
+      downloadedBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}downloaded_bytes'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      streamQuality: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}stream_quality'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadedEpisodesTable createAlias(String alias) {
+    return $DownloadedEpisodesTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadedEpisode extends DataClass
+    implements Insertable<DownloadedEpisode> {
+  final int releaseId;
+  final String episodeId;
+  final String releaseTitle;
+  final String episodeTitle;
+  final String? posterUrl;
+  final int episodeOrdinal;
+  final String localFilePath;
+  final int fileSize;
+  final int downloadedBytes;
+  final String status;
+  final int streamQuality;
+  final DateTime createdAt;
+  const DownloadedEpisode({
+    required this.releaseId,
+    required this.episodeId,
+    required this.releaseTitle,
+    required this.episodeTitle,
+    this.posterUrl,
+    required this.episodeOrdinal,
+    required this.localFilePath,
+    required this.fileSize,
+    required this.downloadedBytes,
+    required this.status,
+    required this.streamQuality,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['release_id'] = Variable<int>(releaseId);
+    map['episode_id'] = Variable<String>(episodeId);
+    map['release_title'] = Variable<String>(releaseTitle);
+    map['episode_title'] = Variable<String>(episodeTitle);
+    if (!nullToAbsent || posterUrl != null) {
+      map['poster_url'] = Variable<String>(posterUrl);
+    }
+    map['episode_ordinal'] = Variable<int>(episodeOrdinal);
+    map['local_file_path'] = Variable<String>(localFilePath);
+    map['file_size'] = Variable<int>(fileSize);
+    map['downloaded_bytes'] = Variable<int>(downloadedBytes);
+    map['status'] = Variable<String>(status);
+    map['stream_quality'] = Variable<int>(streamQuality);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  DownloadedEpisodesCompanion toCompanion(bool nullToAbsent) {
+    return DownloadedEpisodesCompanion(
+      releaseId: Value(releaseId),
+      episodeId: Value(episodeId),
+      releaseTitle: Value(releaseTitle),
+      episodeTitle: Value(episodeTitle),
+      posterUrl: posterUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(posterUrl),
+      episodeOrdinal: Value(episodeOrdinal),
+      localFilePath: Value(localFilePath),
+      fileSize: Value(fileSize),
+      downloadedBytes: Value(downloadedBytes),
+      status: Value(status),
+      streamQuality: Value(streamQuality),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory DownloadedEpisode.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadedEpisode(
+      releaseId: serializer.fromJson<int>(json['releaseId']),
+      episodeId: serializer.fromJson<String>(json['episodeId']),
+      releaseTitle: serializer.fromJson<String>(json['releaseTitle']),
+      episodeTitle: serializer.fromJson<String>(json['episodeTitle']),
+      posterUrl: serializer.fromJson<String?>(json['posterUrl']),
+      episodeOrdinal: serializer.fromJson<int>(json['episodeOrdinal']),
+      localFilePath: serializer.fromJson<String>(json['localFilePath']),
+      fileSize: serializer.fromJson<int>(json['fileSize']),
+      downloadedBytes: serializer.fromJson<int>(json['downloadedBytes']),
+      status: serializer.fromJson<String>(json['status']),
+      streamQuality: serializer.fromJson<int>(json['streamQuality']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'releaseId': serializer.toJson<int>(releaseId),
+      'episodeId': serializer.toJson<String>(episodeId),
+      'releaseTitle': serializer.toJson<String>(releaseTitle),
+      'episodeTitle': serializer.toJson<String>(episodeTitle),
+      'posterUrl': serializer.toJson<String?>(posterUrl),
+      'episodeOrdinal': serializer.toJson<int>(episodeOrdinal),
+      'localFilePath': serializer.toJson<String>(localFilePath),
+      'fileSize': serializer.toJson<int>(fileSize),
+      'downloadedBytes': serializer.toJson<int>(downloadedBytes),
+      'status': serializer.toJson<String>(status),
+      'streamQuality': serializer.toJson<int>(streamQuality),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  DownloadedEpisode copyWith({
+    int? releaseId,
+    String? episodeId,
+    String? releaseTitle,
+    String? episodeTitle,
+    Value<String?> posterUrl = const Value.absent(),
+    int? episodeOrdinal,
+    String? localFilePath,
+    int? fileSize,
+    int? downloadedBytes,
+    String? status,
+    int? streamQuality,
+    DateTime? createdAt,
+  }) => DownloadedEpisode(
+    releaseId: releaseId ?? this.releaseId,
+    episodeId: episodeId ?? this.episodeId,
+    releaseTitle: releaseTitle ?? this.releaseTitle,
+    episodeTitle: episodeTitle ?? this.episodeTitle,
+    posterUrl: posterUrl.present ? posterUrl.value : this.posterUrl,
+    episodeOrdinal: episodeOrdinal ?? this.episodeOrdinal,
+    localFilePath: localFilePath ?? this.localFilePath,
+    fileSize: fileSize ?? this.fileSize,
+    downloadedBytes: downloadedBytes ?? this.downloadedBytes,
+    status: status ?? this.status,
+    streamQuality: streamQuality ?? this.streamQuality,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  DownloadedEpisode copyWithCompanion(DownloadedEpisodesCompanion data) {
+    return DownloadedEpisode(
+      releaseId: data.releaseId.present ? data.releaseId.value : this.releaseId,
+      episodeId: data.episodeId.present ? data.episodeId.value : this.episodeId,
+      releaseTitle: data.releaseTitle.present
+          ? data.releaseTitle.value
+          : this.releaseTitle,
+      episodeTitle: data.episodeTitle.present
+          ? data.episodeTitle.value
+          : this.episodeTitle,
+      posterUrl: data.posterUrl.present ? data.posterUrl.value : this.posterUrl,
+      episodeOrdinal: data.episodeOrdinal.present
+          ? data.episodeOrdinal.value
+          : this.episodeOrdinal,
+      localFilePath: data.localFilePath.present
+          ? data.localFilePath.value
+          : this.localFilePath,
+      fileSize: data.fileSize.present ? data.fileSize.value : this.fileSize,
+      downloadedBytes: data.downloadedBytes.present
+          ? data.downloadedBytes.value
+          : this.downloadedBytes,
+      status: data.status.present ? data.status.value : this.status,
+      streamQuality: data.streamQuality.present
+          ? data.streamQuality.value
+          : this.streamQuality,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedEpisode(')
+          ..write('releaseId: $releaseId, ')
+          ..write('episodeId: $episodeId, ')
+          ..write('releaseTitle: $releaseTitle, ')
+          ..write('episodeTitle: $episodeTitle, ')
+          ..write('posterUrl: $posterUrl, ')
+          ..write('episodeOrdinal: $episodeOrdinal, ')
+          ..write('localFilePath: $localFilePath, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('downloadedBytes: $downloadedBytes, ')
+          ..write('status: $status, ')
+          ..write('streamQuality: $streamQuality, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    releaseId,
+    episodeId,
+    releaseTitle,
+    episodeTitle,
+    posterUrl,
+    episodeOrdinal,
+    localFilePath,
+    fileSize,
+    downloadedBytes,
+    status,
+    streamQuality,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadedEpisode &&
+          other.releaseId == this.releaseId &&
+          other.episodeId == this.episodeId &&
+          other.releaseTitle == this.releaseTitle &&
+          other.episodeTitle == this.episodeTitle &&
+          other.posterUrl == this.posterUrl &&
+          other.episodeOrdinal == this.episodeOrdinal &&
+          other.localFilePath == this.localFilePath &&
+          other.fileSize == this.fileSize &&
+          other.downloadedBytes == this.downloadedBytes &&
+          other.status == this.status &&
+          other.streamQuality == this.streamQuality &&
+          other.createdAt == this.createdAt);
+}
+
+class DownloadedEpisodesCompanion extends UpdateCompanion<DownloadedEpisode> {
+  final Value<int> releaseId;
+  final Value<String> episodeId;
+  final Value<String> releaseTitle;
+  final Value<String> episodeTitle;
+  final Value<String?> posterUrl;
+  final Value<int> episodeOrdinal;
+  final Value<String> localFilePath;
+  final Value<int> fileSize;
+  final Value<int> downloadedBytes;
+  final Value<String> status;
+  final Value<int> streamQuality;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const DownloadedEpisodesCompanion({
+    this.releaseId = const Value.absent(),
+    this.episodeId = const Value.absent(),
+    this.releaseTitle = const Value.absent(),
+    this.episodeTitle = const Value.absent(),
+    this.posterUrl = const Value.absent(),
+    this.episodeOrdinal = const Value.absent(),
+    this.localFilePath = const Value.absent(),
+    this.fileSize = const Value.absent(),
+    this.downloadedBytes = const Value.absent(),
+    this.status = const Value.absent(),
+    this.streamQuality = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DownloadedEpisodesCompanion.insert({
+    required int releaseId,
+    required String episodeId,
+    required String releaseTitle,
+    required String episodeTitle,
+    this.posterUrl = const Value.absent(),
+    required int episodeOrdinal,
+    required String localFilePath,
+    required int fileSize,
+    required int downloadedBytes,
+    required String status,
+    required int streamQuality,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : releaseId = Value(releaseId),
+       episodeId = Value(episodeId),
+       releaseTitle = Value(releaseTitle),
+       episodeTitle = Value(episodeTitle),
+       episodeOrdinal = Value(episodeOrdinal),
+       localFilePath = Value(localFilePath),
+       fileSize = Value(fileSize),
+       downloadedBytes = Value(downloadedBytes),
+       status = Value(status),
+       streamQuality = Value(streamQuality),
+       createdAt = Value(createdAt);
+  static Insertable<DownloadedEpisode> custom({
+    Expression<int>? releaseId,
+    Expression<String>? episodeId,
+    Expression<String>? releaseTitle,
+    Expression<String>? episodeTitle,
+    Expression<String>? posterUrl,
+    Expression<int>? episodeOrdinal,
+    Expression<String>? localFilePath,
+    Expression<int>? fileSize,
+    Expression<int>? downloadedBytes,
+    Expression<String>? status,
+    Expression<int>? streamQuality,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (releaseId != null) 'release_id': releaseId,
+      if (episodeId != null) 'episode_id': episodeId,
+      if (releaseTitle != null) 'release_title': releaseTitle,
+      if (episodeTitle != null) 'episode_title': episodeTitle,
+      if (posterUrl != null) 'poster_url': posterUrl,
+      if (episodeOrdinal != null) 'episode_ordinal': episodeOrdinal,
+      if (localFilePath != null) 'local_file_path': localFilePath,
+      if (fileSize != null) 'file_size': fileSize,
+      if (downloadedBytes != null) 'downloaded_bytes': downloadedBytes,
+      if (status != null) 'status': status,
+      if (streamQuality != null) 'stream_quality': streamQuality,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DownloadedEpisodesCompanion copyWith({
+    Value<int>? releaseId,
+    Value<String>? episodeId,
+    Value<String>? releaseTitle,
+    Value<String>? episodeTitle,
+    Value<String?>? posterUrl,
+    Value<int>? episodeOrdinal,
+    Value<String>? localFilePath,
+    Value<int>? fileSize,
+    Value<int>? downloadedBytes,
+    Value<String>? status,
+    Value<int>? streamQuality,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return DownloadedEpisodesCompanion(
+      releaseId: releaseId ?? this.releaseId,
+      episodeId: episodeId ?? this.episodeId,
+      releaseTitle: releaseTitle ?? this.releaseTitle,
+      episodeTitle: episodeTitle ?? this.episodeTitle,
+      posterUrl: posterUrl ?? this.posterUrl,
+      episodeOrdinal: episodeOrdinal ?? this.episodeOrdinal,
+      localFilePath: localFilePath ?? this.localFilePath,
+      fileSize: fileSize ?? this.fileSize,
+      downloadedBytes: downloadedBytes ?? this.downloadedBytes,
+      status: status ?? this.status,
+      streamQuality: streamQuality ?? this.streamQuality,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (releaseId.present) {
+      map['release_id'] = Variable<int>(releaseId.value);
+    }
+    if (episodeId.present) {
+      map['episode_id'] = Variable<String>(episodeId.value);
+    }
+    if (releaseTitle.present) {
+      map['release_title'] = Variable<String>(releaseTitle.value);
+    }
+    if (episodeTitle.present) {
+      map['episode_title'] = Variable<String>(episodeTitle.value);
+    }
+    if (posterUrl.present) {
+      map['poster_url'] = Variable<String>(posterUrl.value);
+    }
+    if (episodeOrdinal.present) {
+      map['episode_ordinal'] = Variable<int>(episodeOrdinal.value);
+    }
+    if (localFilePath.present) {
+      map['local_file_path'] = Variable<String>(localFilePath.value);
+    }
+    if (fileSize.present) {
+      map['file_size'] = Variable<int>(fileSize.value);
+    }
+    if (downloadedBytes.present) {
+      map['downloaded_bytes'] = Variable<int>(downloadedBytes.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (streamQuality.present) {
+      map['stream_quality'] = Variable<int>(streamQuality.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedEpisodesCompanion(')
+          ..write('releaseId: $releaseId, ')
+          ..write('episodeId: $episodeId, ')
+          ..write('releaseTitle: $releaseTitle, ')
+          ..write('episodeTitle: $episodeTitle, ')
+          ..write('posterUrl: $posterUrl, ')
+          ..write('episodeOrdinal: $episodeOrdinal, ')
+          ..write('localFilePath: $localFilePath, ')
+          ..write('fileSize: $fileSize, ')
+          ..write('downloadedBytes: $downloadedBytes, ')
+          ..write('status: $status, ')
+          ..write('streamQuality: $streamQuality, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2567,6 +3306,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PlaybackPositionsTable(this);
   late final $StreamSessionsTable streamSessions = $StreamSessionsTable(this);
   late final $WatchEntriesTable watchEntries = $WatchEntriesTable(this);
+  late final $DownloadedEpisodesTable downloadedEpisodes =
+      $DownloadedEpisodesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2578,6 +3319,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     playbackPositions,
     streamSessions,
     watchEntries,
+    downloadedEpisodes,
   ];
 }
 
@@ -3939,6 +4681,364 @@ typedef $$WatchEntriesTableProcessedTableManager =
       WatchEntry,
       PrefetchHooks Function()
     >;
+typedef $$DownloadedEpisodesTableCreateCompanionBuilder =
+    DownloadedEpisodesCompanion Function({
+      required int releaseId,
+      required String episodeId,
+      required String releaseTitle,
+      required String episodeTitle,
+      Value<String?> posterUrl,
+      required int episodeOrdinal,
+      required String localFilePath,
+      required int fileSize,
+      required int downloadedBytes,
+      required String status,
+      required int streamQuality,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$DownloadedEpisodesTableUpdateCompanionBuilder =
+    DownloadedEpisodesCompanion Function({
+      Value<int> releaseId,
+      Value<String> episodeId,
+      Value<String> releaseTitle,
+      Value<String> episodeTitle,
+      Value<String?> posterUrl,
+      Value<int> episodeOrdinal,
+      Value<String> localFilePath,
+      Value<int> fileSize,
+      Value<int> downloadedBytes,
+      Value<String> status,
+      Value<int> streamQuality,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$DownloadedEpisodesTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadedEpisodesTable> {
+  $$DownloadedEpisodesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get releaseId => $composableBuilder(
+    column: $table.releaseId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodeId => $composableBuilder(
+    column: $table.episodeId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get releaseTitle => $composableBuilder(
+    column: $table.releaseTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get posterUrl => $composableBuilder(
+    column: $table.posterUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get episodeOrdinal => $composableBuilder(
+    column: $table.episodeOrdinal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localFilePath => $composableBuilder(
+    column: $table.localFilePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fileSize => $composableBuilder(
+    column: $table.fileSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get downloadedBytes => $composableBuilder(
+    column: $table.downloadedBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get streamQuality => $composableBuilder(
+    column: $table.streamQuality,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DownloadedEpisodesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadedEpisodesTable> {
+  $$DownloadedEpisodesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get releaseId => $composableBuilder(
+    column: $table.releaseId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodeId => $composableBuilder(
+    column: $table.episodeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get releaseTitle => $composableBuilder(
+    column: $table.releaseTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get posterUrl => $composableBuilder(
+    column: $table.posterUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get episodeOrdinal => $composableBuilder(
+    column: $table.episodeOrdinal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localFilePath => $composableBuilder(
+    column: $table.localFilePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fileSize => $composableBuilder(
+    column: $table.fileSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get downloadedBytes => $composableBuilder(
+    column: $table.downloadedBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get streamQuality => $composableBuilder(
+    column: $table.streamQuality,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DownloadedEpisodesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadedEpisodesTable> {
+  $$DownloadedEpisodesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get releaseId =>
+      $composableBuilder(column: $table.releaseId, builder: (column) => column);
+
+  GeneratedColumn<String> get episodeId =>
+      $composableBuilder(column: $table.episodeId, builder: (column) => column);
+
+  GeneratedColumn<String> get releaseTitle => $composableBuilder(
+    column: $table.releaseTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get episodeTitle => $composableBuilder(
+    column: $table.episodeTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get posterUrl =>
+      $composableBuilder(column: $table.posterUrl, builder: (column) => column);
+
+  GeneratedColumn<int> get episodeOrdinal => $composableBuilder(
+    column: $table.episodeOrdinal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get localFilePath => $composableBuilder(
+    column: $table.localFilePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fileSize =>
+      $composableBuilder(column: $table.fileSize, builder: (column) => column);
+
+  GeneratedColumn<int> get downloadedBytes => $composableBuilder(
+    column: $table.downloadedBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get streamQuality => $composableBuilder(
+    column: $table.streamQuality,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$DownloadedEpisodesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DownloadedEpisodesTable,
+          DownloadedEpisode,
+          $$DownloadedEpisodesTableFilterComposer,
+          $$DownloadedEpisodesTableOrderingComposer,
+          $$DownloadedEpisodesTableAnnotationComposer,
+          $$DownloadedEpisodesTableCreateCompanionBuilder,
+          $$DownloadedEpisodesTableUpdateCompanionBuilder,
+          (
+            DownloadedEpisode,
+            BaseReferences<
+              _$AppDatabase,
+              $DownloadedEpisodesTable,
+              DownloadedEpisode
+            >,
+          ),
+          DownloadedEpisode,
+          PrefetchHooks Function()
+        > {
+  $$DownloadedEpisodesTableTableManager(
+    _$AppDatabase db,
+    $DownloadedEpisodesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadedEpisodesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadedEpisodesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DownloadedEpisodesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> releaseId = const Value.absent(),
+                Value<String> episodeId = const Value.absent(),
+                Value<String> releaseTitle = const Value.absent(),
+                Value<String> episodeTitle = const Value.absent(),
+                Value<String?> posterUrl = const Value.absent(),
+                Value<int> episodeOrdinal = const Value.absent(),
+                Value<String> localFilePath = const Value.absent(),
+                Value<int> fileSize = const Value.absent(),
+                Value<int> downloadedBytes = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> streamQuality = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DownloadedEpisodesCompanion(
+                releaseId: releaseId,
+                episodeId: episodeId,
+                releaseTitle: releaseTitle,
+                episodeTitle: episodeTitle,
+                posterUrl: posterUrl,
+                episodeOrdinal: episodeOrdinal,
+                localFilePath: localFilePath,
+                fileSize: fileSize,
+                downloadedBytes: downloadedBytes,
+                status: status,
+                streamQuality: streamQuality,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int releaseId,
+                required String episodeId,
+                required String releaseTitle,
+                required String episodeTitle,
+                Value<String?> posterUrl = const Value.absent(),
+                required int episodeOrdinal,
+                required String localFilePath,
+                required int fileSize,
+                required int downloadedBytes,
+                required String status,
+                required int streamQuality,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DownloadedEpisodesCompanion.insert(
+                releaseId: releaseId,
+                episodeId: episodeId,
+                releaseTitle: releaseTitle,
+                episodeTitle: episodeTitle,
+                posterUrl: posterUrl,
+                episodeOrdinal: episodeOrdinal,
+                localFilePath: localFilePath,
+                fileSize: fileSize,
+                downloadedBytes: downloadedBytes,
+                status: status,
+                streamQuality: streamQuality,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DownloadedEpisodesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DownloadedEpisodesTable,
+      DownloadedEpisode,
+      $$DownloadedEpisodesTableFilterComposer,
+      $$DownloadedEpisodesTableOrderingComposer,
+      $$DownloadedEpisodesTableAnnotationComposer,
+      $$DownloadedEpisodesTableCreateCompanionBuilder,
+      $$DownloadedEpisodesTableUpdateCompanionBuilder,
+      (
+        DownloadedEpisode,
+        BaseReferences<
+          _$AppDatabase,
+          $DownloadedEpisodesTable,
+          DownloadedEpisode
+        >,
+      ),
+      DownloadedEpisode,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3955,4 +5055,6 @@ class $AppDatabaseManager {
       $$StreamSessionsTableTableManager(_db, _db.streamSessions);
   $$WatchEntriesTableTableManager get watchEntries =>
       $$WatchEntriesTableTableManager(_db, _db.watchEntries);
+  $$DownloadedEpisodesTableTableManager get downloadedEpisodes =>
+      $$DownloadedEpisodesTableTableManager(_db, _db.downloadedEpisodes);
 }

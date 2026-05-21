@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show FontFeature, ImageFilter;
 
+import 'package:dream_cast/core/database/database_providers.dart';
 import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/data/player_pip_service.dart';
 import 'package:dream_cast/features/player/data/stream_preference_providers.dart';
@@ -152,11 +154,19 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     await old?.dispose();
 
     try {
-      final controller = VideoPlayerController.networkUrl(
-        stream.url,
-        httpHeaders: stream.headers,
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
-      );
+      final VideoPlayerController controller;
+      if (stream.url.isScheme('file')) {
+        controller = VideoPlayerController.file(
+          File(stream.url.toFilePath()),
+          videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+        );
+      } else {
+        controller = VideoPlayerController.networkUrl(
+          stream.url,
+          httpHeaders: stream.headers,
+          videoPlayerOptions: VideoPlayerOptions(mixWithOthers: false),
+        );
+      }
       _controller = controller;
       controller.addListener(_onControllerChanged);
       unawaited(
@@ -413,6 +423,32 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     });
 
     try {
+      final db = ref.read(appDatabaseProvider);
+      final downloaded = await db.downloadedEpisode(
+        _request.release.id,
+        episode.id,
+      );
+
+      if (downloaded != null && downloaded.status == 'completed') {
+        final localStream = DreamStream(
+          id: 'local_${episode.id}',
+          releaseId: _request.release.id,
+          episodeId: episode.id,
+          url: Uri.file(downloaded.localFilePath),
+          type: DreamStreamType.hls,
+          quality: downloaded.streamQuality,
+        );
+        _request = PlaybackRequest(
+          release: _request.release,
+          episode: episode,
+          streams: [localStream],
+          initialStream: localStream,
+          episodeQueue: _request.episodeQueue,
+        );
+        await _initialize(stream: localStream, resume: true);
+        return;
+      }
+
       final data = await ref
           .read(releaseRepositoryProvider)
           .getStreams(episode);
@@ -1076,7 +1112,7 @@ class _PlayerError extends StatelessWidget {
           Icon(Icons.error_outline, color: colors.primary, size: 44),
           const SizedBox(height: 16),
           const Text(
-            'Не удалось воспроизвести поток',
+            'Не удалось воспроизвести серию',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
@@ -1085,10 +1121,10 @@ class _PlayerError extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            '$error',
+          const Text(
+            'Возможно у вас нет доступа к интернету или поток временно недоступен.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: Colors.white70),
           ),
           const SizedBox(height: 20),
           FilledButton.icon(

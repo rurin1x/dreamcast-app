@@ -1,12 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dream_cast/app/widgets/app_error_view.dart';
+import 'package:dream_cast/core/database/app_database.dart';
+import 'package:dream_cast/features/downloads/data/download_providers.dart';
 import 'package:dream_cast/features/library/data/release_bookmark_providers.dart';
 import 'package:dream_cast/features/notifications/data/episode_notification_providers.dart';
 import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
-import 'package:dream_cast/features/player/presentation/preferred_stream_launcher.dart';
-import 'package:dream_cast/features/player/presentation/stream_selection_sheet.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
+import 'package:dream_cast/features/releases/presentation/episode_list_screen.dart';
 import 'package:dream_cast/features/releases/presentation/release_title_formatter.dart';
 import 'package:dream_cast/features/releases/presentation/release_list_providers.dart';
 import 'package:dream_cast/features/releases/presentation/widgets/metadata_chip.dart';
@@ -450,37 +451,38 @@ class _EpisodeListSheetState extends ConsumerState<_EpisodeListSheet> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(releaseEpisodesProvider(widget.detail));
+    final downloadsState = ref.watch(downloadedEpisodesStreamProvider);
     final theme = Theme.of(context);
 
     return SafeArea(
       child: SizedBox(
         height: MediaQuery.sizeOf(context).height * 0.82,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       'Серии',
                       style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                   SegmentedButton<bool>(
+                    showSelectedIcon: false,
                     segments: const [
                       ButtonSegment(
                         value: true,
-                        icon: Icon(Icons.arrow_downward),
-                        label: Text('1...'),
+                        tooltip: 'По возрастанию',
+                        icon: Icon(Icons.arrow_downward, size: 18),
                       ),
                       ButtonSegment(
                         value: false,
-                        icon: Icon(Icons.arrow_upward),
-                        label: Text('...1'),
+                        tooltip: 'По убыванию',
+                        icon: Icon(Icons.arrow_upward, size: 18),
                       ),
                     ],
                     selected: {_ascending},
@@ -488,47 +490,145 @@ class _EpisodeListSheetState extends ConsumerState<_EpisodeListSheet> {
                       setState(() => _ascending = value.first);
                     },
                   ),
+                  const SizedBox(width: 8),
+                  state.maybeWhen(
+                    data: (data) => IconButton.filledTonal(
+                      tooltip: 'Скачать все',
+                      onPressed: data.value.isEmpty
+                          ? null
+                          : () => _downloadAllEpisodes(context, data.value),
+                      icon: const Icon(Icons.download_for_offline_outlined),
+                    ),
+                    orElse: () => const SizedBox.shrink(),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: state.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, stackTrace) => AppErrorView(
-                    error: error,
-                    onRetry: () =>
-                        ref.invalidate(releaseEpisodesProvider(widget.detail)),
-                  ),
-                  data: (data) {
-                    final queue = [...data.value]
-                      ..sort((a, b) => a.ordinal.compareTo(b.ordinal));
-                    final visible = _ascending
-                        ? queue
-                        : queue.reversed.toList();
-
-                    return Column(
-                      children: [
-                        if (data.isStale) const StaleCacheBanner(),
-                        Expanded(
-                          child: ListView.separated(
-                            itemCount: visible.length,
-                            separatorBuilder: (context, index) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, index) => _EpisodeRow(
-                              release: widget.detail.release,
-                              episode: visible[index],
-                              episodeQueue: queue,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+            ),
+            Expanded(
+              child: state.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stackTrace) => AppErrorView(
+                  error: error,
+                  onRetry: () =>
+                      ref.invalidate(releaseEpisodesProvider(widget.detail)),
                 ),
+                data: (data) {
+                  final completedDownloads = downloadsState.value
+                      ?.where(
+                        (download) =>
+                            download.releaseId == widget.detail.release.id &&
+                            download.status == 'completed',
+                      )
+                      .map((download) => download.episodeId)
+                      .toSet();
+                  final offlineOnly =
+                      data.isStale && completedDownloads != null;
+                  final queue =
+                      (offlineOnly
+                              ? data.value.where(
+                                  (episode) =>
+                                      completedDownloads.contains(episode.id),
+                                )
+                              : data.value)
+                          .toList()
+                        ..sort((a, b) => a.ordinal.compareTo(b.ordinal));
+                  final visible = _ascending ? queue : queue.reversed.toList();
+
+                  return Column(
+                    children: [
+                      if (data.isStale) const StaleCacheBanner(),
+                      Expanded(
+                        child: visible.isEmpty && offlineOnly
+                            ? const _OfflineEpisodesEmptyState()
+                            : ListView.separated(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                itemCount: visible.length,
+                                separatorBuilder: (context, index) =>
+                                    const Divider(height: 1, indent: 72),
+                                itemBuilder: (context, index) => _EpisodeRow(
+                                  release: widget.detail.release,
+                                  episode: visible[index],
+                                  episodeQueue: queue,
+                                ),
+                              ),
+                      ),
+                    ],
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _downloadAllEpisodes(
+    BuildContext context,
+    List<DreamEpisode> episodes,
+  ) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Добавляем ${episodes.length} серий в загрузки...'),
+      ),
+    );
+
+    final downloadService = ref.read(downloadServiceProvider);
+    for (final episode in episodes) {
+      try {
+        final streamsData = await ref.read(
+          episodeStreamsProvider(episode).future,
+        );
+        final stream = pickDownloadStream(streamsData.value);
+        if (stream == null) continue;
+        await downloadService.startDownload(
+          release: widget.detail.release,
+          episode: episode,
+          stream: stream,
+        );
+      } catch (_) {
+        // Ошибка одной серии не должна останавливать всю очередь.
+      }
+    }
+  }
+}
+
+class _OfflineEpisodesEmptyState extends StatelessWidget {
+  const _OfflineEpisodesEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 48,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Нет скачанных серий',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Возможно у вас нет доступа к интернету. В офлайн-режиме здесь отображаются только скачанные серии.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.35,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -551,80 +651,245 @@ class _EpisodeRow extends ConsumerWidget {
     final progress = ref.watch(
       episodeWatchEntryProvider((release: release, episode: episode)),
     );
+    final downloadState = ref.watch(
+      downloadedEpisodeStreamProvider((
+        releaseId: release.id,
+        episodeId: episode.id,
+      )),
+    );
+    final download = downloadState.value;
 
     return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(child: Text('${episode.ordinal}')),
-      title: Text(episode.title),
-      subtitle: progress.when(
-        loading: () => const Text('Проверяем прогресс...'),
-        error: (error, stackTrace) => const Text('Прогресс не загружен'),
-        data: (entry) => Text(_progressLabel(entry)),
+      minVerticalPadding: 10,
+      leading: _EpisodeNumberBadge(episode.ordinal),
+      title: Text(episode.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 3),
+        child: progress.when(
+          loading: () => const Text('Проверяем прогресс...'),
+          error: (error, stackTrace) => const Text('Прогресс не загружен'),
+          data: (entry) => _EpisodeRowSubtitle(
+            progress: _progressLabel(entry),
+            download: download,
+          ),
+        ),
       ),
-      trailing: const Icon(Icons.play_arrow),
-      onTap: () => _showStreams(context, ref),
-    );
-  }
-
-  String _progressLabel(ContinueWatchingItem? entry) {
-    if (entry == null) return 'Не просмотрено';
-    if (entry.isWatched) return 'Просмотрено';
-    return 'Остановились на ${_formatDuration(entry.position)}';
-  }
-
-  Future<void> _showStreams(BuildContext context, WidgetRef ref) async {
-    final openedPreferred = await openPreferredStreamIfConfigured(
-      context: context,
-      ref: ref,
-      release: release,
-      episode: episode,
-      episodeQueue: episodeQueue,
-      loadStreams: () => ref.read(episodeStreamsProvider(episode).future),
-    );
-    if (openedPreferred || !context.mounted) return;
-
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => _EpisodeStreamsSheet(
+      trailing: _EpisodeRowActions(
+        download: download,
+        onDownload: () => startEpisodeDownload(
+          context: context,
+          ref: ref,
+          release: release,
+          episode: episode,
+        ),
+        onCancelDownload: () => ref
+            .read(downloadServiceProvider)
+            .cancelDownload(release.id, episode.id),
+        onDeleteDownload: () => confirmDeleteDownload(
+          context: context,
+          ref: ref,
+          release: release,
+          episode: episode,
+        ),
+        onPlay: () => playEpisode(
+          context: context,
+          ref: ref,
+          release: release,
+          episode: episode,
+          episodeQueue: episodeQueue,
+        ),
+      ),
+      onTap: () => playEpisode(
+        context: context,
+        ref: ref,
         release: release,
         episode: episode,
         episodeQueue: episodeQueue,
       ),
     );
   }
+
+  String _progressLabel(ContinueWatchingItem? entry) {
+    if (entry == null) return 'Не просмотрено';
+    if (entry.isWatched) return 'Просмотрено';
+    return 'Остановились на ${formatEpisodeDuration(entry.position)}';
+  }
 }
 
-class _EpisodeStreamsSheet extends ConsumerWidget {
-  const _EpisodeStreamsSheet({
-    required this.release,
-    required this.episode,
-    required this.episodeQueue,
-  });
+class _EpisodeNumberBadge extends StatelessWidget {
+  const _EpisodeNumberBadge(this.number);
 
-  final DreamRelease release;
-  final DreamEpisode episode;
-  final List<DreamEpisode> episodeQueue;
+  final int number;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final streams = ref.watch(episodeStreamsProvider(episode));
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
 
-    return SafeArea(
-      child: streams.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(24),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-        error: (error, stackTrace) => AppErrorView(error: error),
-        data: (data) => StreamSelectionSheet(
-          release: release,
-          episode: episode,
-          streams: data.value,
-          episodeQueue: episodeQueue,
-          isStale: data.isStale,
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: theme.colorScheme.secondaryContainer,
+      foregroundColor: theme.colorScheme.onSecondaryContainer,
+      child: Text(
+        '$number',
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: theme.colorScheme.onSecondaryContainer,
+          fontWeight: FontWeight.w800,
         ),
       ),
+    );
+  }
+}
+
+class _EpisodeRowSubtitle extends StatelessWidget {
+  const _EpisodeRowSubtitle({required this.progress, required this.download});
+
+  final String progress;
+  final DownloadedEpisode? download;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final status = downloadStatusLabel(download);
+
+    return Row(
+      children: [
+        Flexible(
+          child: Text(progress, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
+        if (status != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              status,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _EpisodeRowActions extends StatelessWidget {
+  const _EpisodeRowActions({
+    required this.download,
+    required this.onDownload,
+    required this.onCancelDownload,
+    required this.onDeleteDownload,
+    required this.onPlay,
+  });
+
+  final DownloadedEpisode? download;
+  final VoidCallback onDownload;
+  final VoidCallback onCancelDownload;
+  final VoidCallback onDeleteDownload;
+  final VoidCallback onPlay;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _EpisodeDownloadButton(
+          download: download,
+          onDownload: onDownload,
+          onCancelDownload: onCancelDownload,
+          onDeleteDownload: onDeleteDownload,
+        ),
+        const SizedBox(width: 4),
+        IconButton.filled(
+          tooltip: 'Смотреть',
+          style: IconButton.styleFrom(
+            backgroundColor: theme.colorScheme.primary,
+            foregroundColor: theme.colorScheme.onPrimary,
+          ),
+          onPressed: onPlay,
+          icon: const Icon(Icons.play_arrow_rounded),
+        ),
+      ],
+    );
+  }
+}
+
+class _EpisodeDownloadButton extends StatelessWidget {
+  const _EpisodeDownloadButton({
+    required this.download,
+    required this.onDownload,
+    required this.onCancelDownload,
+    required this.onDeleteDownload,
+  });
+
+  final DownloadedEpisode? download;
+  final VoidCallback onDownload;
+  final VoidCallback onCancelDownload;
+  final VoidCallback onDeleteDownload;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final status = download?.status;
+
+    if (status == 'pending') {
+      return const SizedBox.square(
+        dimension: 40,
+        child: Padding(
+          padding: EdgeInsets.all(10),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (status == 'downloading') {
+      final total = download!.fileSize;
+      final value = total > 0 ? download!.downloadedBytes / total : null;
+      return IconButton(
+        tooltip: 'Отменить загрузку',
+        onPressed: onCancelDownload,
+        icon: Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox.square(
+              dimension: 28,
+              child: CircularProgressIndicator(value: value, strokeWidth: 2.4),
+            ),
+            const Icon(Icons.close_rounded, size: 16),
+          ],
+        ),
+      );
+    }
+
+    if (status == 'completed') {
+      return IconButton(
+        tooltip: 'Удалить офлайн-копию',
+        color: theme.colorScheme.primary,
+        onPressed: onDeleteDownload,
+        icon: const Icon(Icons.offline_pin_rounded),
+      );
+    }
+
+    if (status == 'failed') {
+      return IconButton(
+        tooltip: 'Повторить загрузку',
+        color: theme.colorScheme.error,
+        onPressed: onDownload,
+        icon: const Icon(Icons.error_outline_rounded),
+      );
+    }
+
+    return IconButton(
+      tooltip: 'Скачать',
+      onPressed: onDownload,
+      icon: const Icon(Icons.download_outlined),
     );
   }
 }
@@ -705,11 +970,4 @@ class _SkeletonBlock extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatDuration(Duration duration) {
-  final hours = duration.inHours;
-  final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-  final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
-  return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
 }

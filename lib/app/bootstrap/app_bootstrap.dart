@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dream_cast/core/database/app_database.dart';
 import 'package:dream_cast/core/logging/app_logger.dart';
 import 'package:dream_cast/features/notifications/data/episode_notification_service.dart';
@@ -21,10 +23,32 @@ final class AppBootstrap {
 
     final preferences = await SharedPreferences.getInstance();
     final database = AppDatabase();
-    await EpisodeNotificationService.initialize();
-    await EpisodeNotificationScheduler.initialize();
-    await EpisodeNotificationScheduler.syncFromPreferences(preferences);
+    try {
+      await EpisodeNotificationScheduler.initialize();
+    } catch (error, stackTrace) {
+      appLogger(
+        'bootstrap',
+      ).warning('WorkManager startup failed: $error', stackTrace);
+    }
+    unawaited(_startBackgroundServices(preferences));
 
     return AppBootstrapResult(preferences: preferences, database: database);
+  }
+
+  static Future<void> _startBackgroundServices(
+    SharedPreferences preferences,
+  ) async {
+    try {
+      await EpisodeNotificationService.initialize().timeout(
+        const Duration(seconds: 3),
+      );
+      await EpisodeNotificationScheduler.syncFromPreferences(
+        preferences,
+      ).timeout(const Duration(seconds: 3));
+    } catch (error, stackTrace) {
+      appLogger(
+        'bootstrap',
+      ).warning('Background services startup failed: $error', stackTrace);
+    }
   }
 }

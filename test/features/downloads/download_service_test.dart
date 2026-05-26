@@ -13,7 +13,7 @@ void main() {
   setUp(() {
     db = AppDatabase(NativeDatabase.memory());
     dio = Dio();
-    service = DownloadService(db, dio);
+    service = DownloadService(db, dio, useForegroundTask: false);
   });
 
   tearDown(() async {

@@ -7,17 +7,64 @@ import 'package:dream_cast/core/database/app_database.dart';
 import 'package:dream_cast/features/downloads/data/download_notification_service.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:workmanager/workmanager.dart';
 
 const downloadEpisodeTaskName = 'dream_cast_download_episode';
 const downloadEpisodeBatchTaskName = 'dream_cast_download_episode_batch';
-const _downloadTaskUniquePrefix = 'dream_cast_download_episode_';
-const _downloadBatchTaskUniquePrefix = 'dream_cast_download_episode_batch_';
+const _downloadForegroundPayloadKey = 'download.foreground.payload';
+const _downloadForegroundServiceId =
+    DownloadNotificationService.activeForegroundNotificationId;
+
+@pragma('vm:entry-point')
+void downloadForegroundTaskCallback() {
+  FlutterForegroundTask.setTaskHandler(_DownloadForegroundTaskHandler());
+}
+
+final class _DownloadForegroundTaskHandler extends TaskHandler {
+  @override
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+    final raw = await FlutterForegroundTask.getData<String>(
+      key: _downloadForegroundPayloadKey,
+    );
+    if (raw == null || raw.isEmpty) {
+      await FlutterForegroundTask.stopService();
+      return;
+    }
+
+    try {
+      final payload = jsonDecode(raw) as Map<String, dynamic>;
+      await FlutterForegroundTask.updateService(
+        notificationTitle: payload['title'] as String? ?? 'Загрузка серии',
+        notificationText: payload['text'] as String? ?? 'Подготовка...',
+      );
+
+      final type = payload['type'] as String? ?? downloadEpisodeTaskName;
+      final input = (payload['input'] as Map<String, dynamic>?) ?? {};
+      if (type == downloadEpisodeBatchTaskName) {
+        await DownloadService.runBackgroundBatchTask(input);
+      } else {
+        await DownloadService.runBackgroundTask(input);
+      }
+    } finally {
+      await FlutterForegroundTask.removeData(
+        key: _downloadForegroundPayloadKey,
+      );
+      await FlutterForegroundTask.stopService();
+    }
+  }
+
+  @override
+  void onRepeatEvent(DateTime timestamp) {}
+
+  @override
+  Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {}
+}
 
 final class DownloadService {
-  DownloadService(this._database, this._dio);
+  DownloadService(this._database, this._dio, {bool useForegroundTask = true})
+    : _useForegroundTask = useForegroundTask;
 
   // HLS has many small media segments. Downloading them one by one is very
   // slow, while unlimited parallel requests can overload the server or radio.
@@ -25,6 +72,7 @@ final class DownloadService {
 
   final AppDatabase _database;
   final Dio _dio;
+  final bool _useForegroundTask;
   final Map<String, CancelToken> _activeCancelTokens = {};
 
   Future<void> startDownload({
@@ -59,6 +107,7 @@ final class DownloadService {
       await DownloadNotificationService.showQueued(
         release: release,
         episode: episode,
+        notificationId: _downloadForegroundServiceId,
       );
     } else {
       await DownloadNotificationService.showBatchProgress(
@@ -67,32 +116,20 @@ final class DownloadService {
         completed: 0,
         failed: 0,
         total: batch.episodeIds.length,
+        notificationId: _downloadForegroundServiceId,
       );
     }
 
-    try {
-      await Workmanager().registerOneOffTask(
-        '$_downloadTaskUniquePrefix${release.id}_${_safeFilePart(episode.id)}',
-        downloadEpisodeTaskName,
-        inputData: _taskInputData(
+    if (_useForegroundTask) {
+      await _startForegroundDownload(
+        title: batch == null ? 'Загрузка серии' : 'Загрузка серий',
+        text: '${release.title} • ${episode.title}',
+        type: downloadEpisodeTaskName,
+        input: _taskInputData(
           release: release,
           episode: episode,
           stream: stream,
           batch: batch,
-        ),
-        constraints: Constraints(networkType: NetworkType.connected),
-        existingWorkPolicy: ExistingWorkPolicy.replace,
-        backoffPolicy: BackoffPolicy.linear,
-        backoffPolicyDelay: const Duration(minutes: 5),
-      );
-    } catch (_) {
-      unawaited(
-        runDownload(
-          release: release,
-          episode: episode,
-          stream: stream,
-          batch: batch,
-          cancelToken: cancelToken,
         ),
       );
     }
@@ -135,29 +172,18 @@ final class DownloadService {
       completed: 0,
       failed: 0,
       total: batch.episodeIds.length,
+      notificationId: _downloadForegroundServiceId,
     );
 
-    try {
-      await Workmanager().registerOneOffTask(
-        '$_downloadBatchTaskUniquePrefix${release.id}_${batch.id}',
-        downloadEpisodeBatchTaskName,
-        inputData: _batchTaskInputData(
+    if (_useForegroundTask) {
+      await _startForegroundDownload(
+        title: 'Загрузка серий',
+        text: release.title,
+        type: downloadEpisodeBatchTaskName,
+        input: _batchTaskInputData(
           release: release,
           requests: requests,
           batch: batch,
-        ),
-        constraints: Constraints(networkType: NetworkType.connected),
-        existingWorkPolicy: ExistingWorkPolicy.replace,
-        backoffPolicy: BackoffPolicy.linear,
-        backoffPolicyDelay: const Duration(minutes: 5),
-      );
-    } catch (_) {
-      unawaited(
-        runBatchDownload(
-          release: release,
-          requests: requests,
-          batch: batch,
-          stopOnCancel: false,
         ),
       );
     }
@@ -247,6 +273,13 @@ final class DownloadService {
           fileSize: Value(playlist.segments.length),
           downloadedBytes: const Value(0),
         ),
+      );
+      await _showDownloadNotificationState(
+        release: release,
+        episode: episode,
+        batch: batch,
+        downloaded: 0,
+        total: playlist.segments.length,
       );
 
       final docDir = await getApplicationDocumentsDirectory();
@@ -468,6 +501,64 @@ final class DownloadService {
     }
   }
 
+  static Future<void> _startForegroundDownload({
+    required String title,
+    required String text,
+    required String type,
+    required Map<String, dynamic> input,
+  }) async {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: DownloadNotificationService.channelId,
+        channelName: DownloadNotificationService.channelName,
+        channelDescription: DownloadNotificationService.channelDescription,
+        onlyAlertOnce: true,
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(
+        showNotification: false,
+        playSound: false,
+      ),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.nothing(),
+        autoRunOnBoot: false,
+        autoRunOnMyPackageReplaced: false,
+        allowWakeLock: true,
+        allowWifiLock: true,
+      ),
+    );
+
+    final permission =
+        await FlutterForegroundTask.checkNotificationPermission();
+    if (permission != NotificationPermission.granted) {
+      await FlutterForegroundTask.requestNotificationPermission();
+    }
+
+    if (await FlutterForegroundTask.isRunningService) {
+      await FlutterForegroundTask.stopService();
+    }
+
+    await FlutterForegroundTask.saveData(
+      key: _downloadForegroundPayloadKey,
+      value: jsonEncode({
+        'type': type,
+        'title': title,
+        'text': text,
+        'input': input,
+      }),
+    );
+
+    final result = await FlutterForegroundTask.startService(
+      serviceId: _downloadForegroundServiceId,
+      serviceTypes: [ForegroundServiceTypes.dataSync],
+      notificationTitle: title,
+      notificationText: text,
+      callback: downloadForegroundTaskCallback,
+    );
+    if (result is ServiceRequestFailure) {
+      throw result.error;
+    }
+  }
+
   static Dio _createBackgroundDio() {
     return Dio(
       BaseOptions(
@@ -487,6 +578,84 @@ final class DownloadService {
         },
       ),
     );
+  }
+
+  static Map<String, dynamic> _taskInputData({
+    required DreamRelease release,
+    required DreamEpisode episode,
+    required DreamStream stream,
+    DownloadBatch? batch,
+  }) {
+    return {
+      'releaseId': release.id,
+      'releaseTitle': release.title,
+      'releaseOriginalTitle': release.originalTitle,
+      'releaseUrl': release.url,
+      if (release.posterUrl != null) 'releasePosterUrl': release.posterUrl!,
+      'episodeId': episode.id,
+      'episodeReleaseId': episode.releaseId,
+      'episodeOrdinal': episode.ordinal,
+      'episodeTitle': episode.title,
+      'episodeFile': episode.file,
+      'streamId': stream.id,
+      'streamReleaseId': stream.releaseId,
+      'streamEpisodeId': stream.episodeId,
+      'streamUrl': stream.url.toString(),
+      'streamType': stream.type.name,
+      'streamQuality': stream.quality,
+      'streamHeadersJson': jsonEncode(stream.headers),
+      if (batch != null) 'batchId': batch.id,
+      if (batch != null) 'batchTitle': batch.title,
+      if (batch != null) 'batchEpisodeIdsJson': jsonEncode(batch.episodeIds),
+    };
+  }
+
+  static Map<String, dynamic> _batchTaskInputData({
+    required DreamRelease release,
+    required List<DreamEpisodeDownloadRequest> requests,
+    required DownloadBatch batch,
+  }) {
+    return {
+      'releaseId': release.id,
+      'releaseTitle': release.title,
+      'releaseOriginalTitle': release.originalTitle,
+      'releaseUrl': release.url,
+      if (release.posterUrl != null) 'releasePosterUrl': release.posterUrl!,
+      'batchId': batch.id,
+      'batchTitle': batch.title,
+      'batchEpisodeIdsJson': jsonEncode(batch.episodeIds.toList()),
+      'downloadRequestsJson': jsonEncode(
+        requests.map((request) => _downloadRequestToJson(request)).toList(),
+      ),
+    };
+  }
+
+  static Map<String, Object?> _downloadRequestToJson(
+    DreamEpisodeDownloadRequest request,
+  ) {
+    return {
+      'episode': {
+        'id': request.episode.id,
+        'releaseId': request.episode.releaseId,
+        'ordinal': request.episode.ordinal,
+        'title': request.episode.title,
+        'file': request.episode.file,
+        'label': request.episode.label,
+        'thumbnailUrl': request.episode.thumbnailUrl,
+        'embedUrl': request.episode.embedUrl,
+        'vars': request.episode.vars,
+      },
+      'stream': {
+        'id': request.stream.id,
+        'releaseId': request.stream.releaseId,
+        'episodeId': request.stream.episodeId,
+        'url': request.stream.url.toString(),
+        'type': request.stream.type.name,
+        'quality': request.stream.quality,
+        'headers': request.stream.headers,
+        'expiresAt': request.stream.expiresAt?.toIso8601String(),
+      },
+    };
   }
 
   Future<_DownloadedHlsResource> _downloadHlsResource({
@@ -529,21 +698,36 @@ final class DownloadService {
   }) async {
     if (batch == null) {
       if (completed) {
+        await _updateForegroundDownloadNotification(
+          title: 'Серия скачана',
+          text: '${release.title} • ${episode.title}',
+        );
         await DownloadNotificationService.showCompleted(
           release: release,
           episode: episode,
+          notificationId: _downloadForegroundServiceId,
         );
       } else if (failed) {
+        await _updateForegroundDownloadNotification(
+          title: 'Загрузка не удалась',
+          text: '${release.title} • ${episode.title}',
+        );
         await DownloadNotificationService.showFailed(
           release: release,
           episode: episode,
+          notificationId: _downloadForegroundServiceId,
         );
       } else {
+        await _updateForegroundDownloadNotification(
+          title: 'Загрузка серии',
+          text: '${release.title} • ${episode.title}',
+        );
         await DownloadNotificationService.showProgress(
           release: release,
           episode: episode,
           downloaded: downloaded,
           total: total,
+          notificationId: _downloadForegroundServiceId,
         );
       }
       return;
@@ -561,13 +745,44 @@ final class DownloadService {
     final failedCount = batchEpisodes
         .where((download) => download.status == 'failed')
         .length;
+    final safeTotal = batch.episodeIds.isEmpty ? 1 : batch.episodeIds.length;
+    final doneCount = (completedCount + failedCount).clamp(0, safeTotal);
+    final isFinished = doneCount >= safeTotal;
+    final title = isFinished
+        ? (failedCount > 0 ? 'Загрузка завершена с ошибками' : 'Серии скачаны')
+        : 'Загрузка серий';
+    final currentProgress = completed || failed
+        ? 'готово $doneCount из $safeTotal'
+        : 'готово $doneCount из $safeTotal • скачивается: ${episode.title}';
+    final failedSuffix = failedCount > 0 ? ', ошибок: $failedCount' : '';
+    await _updateForegroundDownloadNotification(
+      title: title,
+      text: '${batch.title} • $currentProgress$failedSuffix',
+    );
     await DownloadNotificationService.showBatchProgress(
       batchId: batch.id,
       title: batch.title,
       completed: completedCount,
       failed: failedCount,
       total: batch.episodeIds.length,
+      notificationId: _downloadForegroundServiceId,
     );
+  }
+
+  static Future<void> _updateForegroundDownloadNotification({
+    required String title,
+    required String text,
+  }) async {
+    try {
+      await FlutterForegroundTask.updateService(
+        notificationTitle: title,
+        notificationText: text,
+      );
+    } catch (_) {
+      // The foreground-task notification is absent in tests and old local
+      // fallback paths. Final state is still published by the notification
+      // service below.
+    }
   }
 
   Future<String?> _resolveHlsUrl(
@@ -700,84 +915,6 @@ final class DownloadService {
 
   String _safeFilePart(String value) {
     return value.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-  }
-
-  static Map<String, dynamic> _taskInputData({
-    required DreamRelease release,
-    required DreamEpisode episode,
-    required DreamStream stream,
-    DownloadBatch? batch,
-  }) {
-    return {
-      'releaseId': release.id,
-      'releaseTitle': release.title,
-      'releaseOriginalTitle': release.originalTitle,
-      'releaseUrl': release.url,
-      if (release.posterUrl != null) 'releasePosterUrl': release.posterUrl!,
-      'episodeId': episode.id,
-      'episodeReleaseId': episode.releaseId,
-      'episodeOrdinal': episode.ordinal,
-      'episodeTitle': episode.title,
-      'episodeFile': episode.file,
-      'streamId': stream.id,
-      'streamReleaseId': stream.releaseId,
-      'streamEpisodeId': stream.episodeId,
-      'streamUrl': stream.url.toString(),
-      'streamType': stream.type.name,
-      'streamQuality': stream.quality,
-      'streamHeadersJson': jsonEncode(stream.headers),
-      if (batch != null) 'batchId': batch.id,
-      if (batch != null) 'batchTitle': batch.title,
-      if (batch != null) 'batchEpisodeIdsJson': jsonEncode(batch.episodeIds),
-    };
-  }
-
-  static Map<String, dynamic> _batchTaskInputData({
-    required DreamRelease release,
-    required List<DreamEpisodeDownloadRequest> requests,
-    required DownloadBatch batch,
-  }) {
-    return {
-      'releaseId': release.id,
-      'releaseTitle': release.title,
-      'releaseOriginalTitle': release.originalTitle,
-      'releaseUrl': release.url,
-      if (release.posterUrl != null) 'releasePosterUrl': release.posterUrl!,
-      'batchId': batch.id,
-      'batchTitle': batch.title,
-      'batchEpisodeIdsJson': jsonEncode(batch.episodeIds.toList()),
-      'downloadRequestsJson': jsonEncode(
-        requests.map((request) => _downloadRequestToJson(request)).toList(),
-      ),
-    };
-  }
-
-  static Map<String, Object?> _downloadRequestToJson(
-    DreamEpisodeDownloadRequest request,
-  ) {
-    return {
-      'episode': {
-        'id': request.episode.id,
-        'releaseId': request.episode.releaseId,
-        'ordinal': request.episode.ordinal,
-        'title': request.episode.title,
-        'file': request.episode.file,
-        'label': request.episode.label,
-        'thumbnailUrl': request.episode.thumbnailUrl,
-        'embedUrl': request.episode.embedUrl,
-        'vars': request.episode.vars,
-      },
-      'stream': {
-        'id': request.stream.id,
-        'releaseId': request.stream.releaseId,
-        'episodeId': request.stream.episodeId,
-        'url': request.stream.url.toString(),
-        'type': request.stream.type.name,
-        'quality': request.stream.quality,
-        'headers': request.stream.headers,
-        'expiresAt': request.stream.expiresAt?.toIso8601String(),
-      },
-    };
   }
 
   static DreamRelease _releaseFromInput(Map<String, dynamic> input) {

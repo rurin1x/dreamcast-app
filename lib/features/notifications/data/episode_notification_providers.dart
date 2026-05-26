@@ -44,8 +44,6 @@ final class EpisodeNotificationSubscriptionController extends Notifier<bool> {
 
   Future<bool> enable(DreamRelease release) async {
     final granted = await EpisodeNotificationService.requestPermission();
-    if (!granted) return false;
-
     final preferences = ref.read(sharedPreferencesProvider);
     final existing = EpisodeNotificationStorage.read(preferences, release.id);
     await EpisodeNotificationStorage.save(
@@ -59,11 +57,16 @@ final class EpisodeNotificationSubscriptionController extends Notifier<bool> {
     );
     state = true;
     ref.invalidate(episodeNotificationSubscriptionsProvider);
-    await EpisodeNotificationScheduler.syncFromPreferences(preferences);
-    await EpisodeNotificationScheduler.scheduleOneOff(
-      initialDelay: const Duration(minutes: 1),
-    );
-    return true;
+    try {
+      await EpisodeNotificationScheduler.syncFromPreferences(preferences);
+      await EpisodeNotificationScheduler.scheduleOneOff(
+        initialDelay: const Duration(minutes: 1),
+      );
+    } catch (_) {
+      // The subscription itself is local state and should not be rolled back
+      // if Android refuses to schedule a background check right now.
+    }
+    return granted;
   }
 
   Future<void> disable() async {
@@ -71,6 +74,8 @@ final class EpisodeNotificationSubscriptionController extends Notifier<bool> {
     await EpisodeNotificationStorage.remove(preferences, _releaseId);
     state = false;
     ref.invalidate(episodeNotificationSubscriptionsProvider);
-    await EpisodeNotificationScheduler.syncFromPreferences(preferences);
+    try {
+      await EpisodeNotificationScheduler.syncFromPreferences(preferences);
+    } catch (_) {}
   }
 }

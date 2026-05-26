@@ -9,7 +9,7 @@ final class EpisodeNotificationService {
   const EpisodeNotificationService._();
 
   static const channelId = 'dream_cast_new_episodes';
-  static const smallIcon = '@drawable/ic_stat_dream_cast';
+  static const smallIcon = 'ic_stat_dream_cast';
   static const channelName = 'Новые серии';
   static const channelDescription =
       'Уведомления о новых сериях в подписанных тайтлах.';
@@ -23,37 +23,47 @@ final class EpisodeNotificationService {
 
   static Future<void> initialize() async {
     if (_initialized) return;
-    const initializationSettings = InitializationSettings(
-      android: AndroidInitializationSettings(smallIcon),
-    );
-    await _plugin.initialize(
-      settings: initializationSettings,
-      onDidReceiveNotificationResponse: _handleNotificationResponse,
-    );
+    try {
+      const initializationSettings = InitializationSettings(
+        android: AndroidInitializationSettings(smallIcon),
+      );
+      await _plugin.initialize(
+        settings: initializationSettings,
+        onDidReceiveNotificationResponse: _handleNotificationResponse,
+      );
 
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await android?.createNotificationChannel(
-      const AndroidNotificationChannel(
-        channelId,
-        channelName,
-        description: channelDescription,
-        importance: Importance.high,
-      ),
-    );
-    await _rememberLaunchNotification();
-    _initialized = true;
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          channelId,
+          channelName,
+          description: channelDescription,
+          importance: Importance.high,
+        ),
+      );
+      await _rememberLaunchNotification();
+    } finally {
+      _initialized = true;
+    }
   }
 
   static Future<bool> requestPermission() async {
-    await initialize();
-    final android = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    return await android?.requestNotificationsPermission() ?? true;
+    try {
+      await initialize().timeout(const Duration(seconds: 2));
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      return await android?.requestNotificationsPermission().timeout(
+            const Duration(seconds: 2),
+          ) ??
+          true;
+    } catch (_) {
+      return true;
+    }
   }
 
   static Future<void> showNewEpisodes({

@@ -138,11 +138,16 @@ final class EpisodeNotificationWorker {
 final class EpisodeNotificationScheduler {
   const EpisodeNotificationScheduler._();
 
+  static Future<void>? _initializeFuture;
+
   static Future<void> initialize() {
-    return Workmanager().initialize(episodeNotificationCallbackDispatcher);
+    return _initializeFuture ??= Workmanager().initialize(
+      episodeNotificationCallbackDispatcher,
+    );
   }
 
   static Future<void> syncFromPreferences(SharedPreferences preferences) async {
+    await initialize();
     final subscriptions = EpisodeNotificationStorage.readAll(preferences);
     if (subscriptions.isEmpty) {
       await Workmanager().cancelByUniqueName(episodeNotificationUniqueName);
@@ -155,12 +160,13 @@ final class EpisodeNotificationScheduler {
     await scheduleOneOff();
   }
 
-  static Future<void> schedule() {
+  static Future<void> schedule() async {
+    await initialize();
     return Workmanager().registerPeriodicTask(
       episodeNotificationUniqueName,
       episodeNotificationTaskName,
-      frequency: const Duration(hours: 1),
-      flexInterval: const Duration(minutes: 20),
+      frequency: const Duration(minutes: 30),
+      flexInterval: const Duration(minutes: 10),
       constraints: Constraints(
         networkType: NetworkType.connected,
         requiresBatteryNotLow: true,
@@ -171,7 +177,8 @@ final class EpisodeNotificationScheduler {
 
   static Future<void> scheduleOneOff({
     Duration initialDelay = const Duration(minutes: 15),
-  }) {
+  }) async {
+    await initialize();
     return Workmanager().registerOneOffTask(
       episodeNotificationOneOffUniqueName,
       episodeNotificationTaskName,

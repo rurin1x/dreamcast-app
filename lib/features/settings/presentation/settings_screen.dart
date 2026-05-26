@@ -221,7 +221,7 @@ class _ReleaseFooter extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.only(top: 14),
           child: Text(
-            'Dream Cast · v1.0.0 (build 1) · GPLv3 · 2026',
+            'Dream Cast · v1.0.1 (build 3) · GPLv3 · 2026',
             textAlign: TextAlign.center,
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,

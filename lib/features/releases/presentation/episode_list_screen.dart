@@ -2,6 +2,7 @@ import 'package:dream_cast/app/widgets/app_error_view.dart';
 import 'package:dream_cast/core/database/app_database.dart';
 import 'package:dream_cast/core/database/database_providers.dart';
 import 'package:dream_cast/features/downloads/data/download_providers.dart';
+import 'package:dream_cast/features/downloads/data/download_service.dart';
 import 'package:dream_cast/features/player/data/player_providers.dart';
 import 'package:dream_cast/features/player/domain/playback_request.dart';
 import 'package:dream_cast/features/player/presentation/preferred_stream_launcher.dart';
@@ -103,7 +104,7 @@ class _EpisodeListScreenState extends ConsumerState<EpisodeListScreen> {
       ),
     );
 
-    final downloadService = ref.read(downloadServiceProvider);
+    final requests = <DreamEpisodeDownloadRequest>[];
     for (final episode in episodes) {
       try {
         final streamsData = await ref.read(
@@ -111,15 +112,18 @@ class _EpisodeListScreenState extends ConsumerState<EpisodeListScreen> {
         );
         final stream = pickDownloadStream(streamsData.value);
         if (stream == null) continue;
-        await downloadService.startDownload(
-          release: widget.detail.release,
-          episode: episode,
-          stream: stream,
+        requests.add(
+          DreamEpisodeDownloadRequest(episode: episode, stream: stream),
         );
       } catch (_) {
         // Ошибка одной серии не должна останавливать очередь целиком.
       }
     }
+
+    if (requests.isEmpty) return;
+    await ref
+        .read(downloadServiceProvider)
+        .startBatchDownload(release: widget.detail.release, requests: requests);
   }
 }
 
@@ -256,10 +260,7 @@ class _EpisodeTile extends ConsumerWidget {
         child: progress.when(
           loading: () => const Text('Проверяем прогресс...'),
           error: (error, stackTrace) => const Text('Прогресс не загружен'),
-          data: (entry) => _EpisodeSubtitle(
-            progress: _progressLabel(entry),
-            download: download,
-          ),
+          data: (entry) => _EpisodeSubtitle(progress: _progressLabel(entry)),
         ),
       ),
       trailing: _EpisodeActions(
@@ -329,40 +330,13 @@ class _EpisodeNumberBadge extends StatelessWidget {
 }
 
 class _EpisodeSubtitle extends StatelessWidget {
-  const _EpisodeSubtitle({required this.progress, required this.download});
+  const _EpisodeSubtitle({required this.progress});
 
   final String progress;
-  final DownloadedEpisode? download;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final status = downloadStatusLabel(download);
-
-    return Row(
-      children: [
-        Flexible(
-          child: Text(progress, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
-        if (status != null) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(99),
-            ),
-            child: Text(
-              status,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
+    return Text(progress, maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 }
 
@@ -728,16 +702,6 @@ DreamStream? pickDownloadStream(List<DreamStream> streams, [int? quality]) {
     return distance == 0 ? b.quality.compareTo(a.quality) : distance;
   });
   return hlsStreams.first;
-}
-
-String? downloadStatusLabel(DownloadedEpisode? download) {
-  return switch (download?.status) {
-    'pending' => 'В очереди',
-    'downloading' => 'Загрузка',
-    'completed' => 'Офлайн',
-    'failed' => 'Ошибка',
-    _ => null,
-  };
 }
 
 String _qualityDescription(int quality) {

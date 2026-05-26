@@ -9,6 +9,7 @@ final class EpisodeNotificationService {
   const EpisodeNotificationService._();
 
   static const channelId = 'dream_cast_new_episodes';
+  static const smallIcon = '@drawable/ic_stat_dream_cast';
   static const channelName = 'Новые серии';
   static const channelDescription =
       'Уведомления о новых сериях в подписанных тайтлах.';
@@ -23,7 +24,7 @@ final class EpisodeNotificationService {
   static Future<void> initialize() async {
     if (_initialized) return;
     const initializationSettings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      android: AndroidInitializationSettings(smallIcon),
     );
     await _plugin.initialize(
       settings: initializationSettings,
@@ -72,7 +73,7 @@ final class EpisodeNotificationService {
           importance: Importance.high,
           priority: Priority.high,
           category: AndroidNotificationCategory.status,
-          icon: '@mipmap/ic_launcher',
+          icon: smallIcon,
         ),
       ),
       payload: entry.id,

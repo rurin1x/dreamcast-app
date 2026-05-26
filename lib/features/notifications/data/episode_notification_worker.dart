@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:dio/dio.dart';
 import 'package:dream_cast/core/network/network_config.dart';
+import 'package:dream_cast/features/downloads/data/download_service.dart';
 import 'package:dream_cast/features/notifications/data/episode_notification_history.dart';
 import 'package:dream_cast/features/notifications/data/episode_notification_history_storage.dart';
 import 'package:dream_cast/features/notifications/data/episode_notification_service.dart';
@@ -24,6 +25,14 @@ void episodeNotificationCallbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
     DartPluginRegistrant.ensureInitialized();
     WidgetsFlutterBinding.ensureInitialized();
+
+    if (taskName == downloadEpisodeTaskName) {
+      return DownloadService.runBackgroundTask(inputData);
+    }
+
+    if (taskName == downloadEpisodeBatchTaskName) {
+      return DownloadService.runBackgroundBatchTask(inputData);
+    }
 
     if (taskName != episodeNotificationTaskName) return true;
 

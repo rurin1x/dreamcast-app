@@ -1,19 +1,27 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dream_cast/core/database/app_database.dart';
+import 'package:dream_cast/features/downloads/data/download_notification_service.dart';
 import 'package:dream_cast/features/releases/domain/release.dart';
 import 'package:drift/drift.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:workmanager/workmanager.dart';
+
+const downloadEpisodeTaskName = 'dream_cast_download_episode';
+const downloadEpisodeBatchTaskName = 'dream_cast_download_episode_batch';
+const _downloadTaskUniquePrefix = 'dream_cast_download_episode_';
+const _downloadBatchTaskUniquePrefix = 'dream_cast_download_episode_batch_';
 
 final class DownloadService {
   DownloadService(this._database, this._dio);
 
   // HLS has many small media segments. Downloading them one by one is very
   // slow, while unlimited parallel requests can overload the server or radio.
-  static const _segmentDownloadConcurrency = 6;
+  static const _segmentDownloadConcurrency = 4;
 
   final AppDatabase _database;
   final Dio _dio;
@@ -23,6 +31,7 @@ final class DownloadService {
     required DreamRelease release,
     required DreamEpisode episode,
     required DreamStream stream,
+    DownloadBatch? batch,
   }) async {
     final key = _taskKey(release.id, episode.id);
     if (_activeCancelTokens.containsKey(key)) return;
@@ -46,21 +55,122 @@ final class DownloadService {
         createdAt: Value(DateTime.now()),
       ),
     );
-
-    unawaited(
-      _runDownload(
+    if (batch == null) {
+      await DownloadNotificationService.showQueued(
         release: release,
         episode: episode,
-        stream: stream,
-        cancelToken: cancelToken,
-      ),
+      );
+    } else {
+      await DownloadNotificationService.showBatchProgress(
+        batchId: batch.id,
+        title: batch.title,
+        completed: 0,
+        failed: 0,
+        total: batch.episodeIds.length,
+      );
+    }
+
+    try {
+      await Workmanager().registerOneOffTask(
+        '$_downloadTaskUniquePrefix${release.id}_${_safeFilePart(episode.id)}',
+        downloadEpisodeTaskName,
+        inputData: _taskInputData(
+          release: release,
+          episode: episode,
+          stream: stream,
+          batch: batch,
+        ),
+        constraints: Constraints(networkType: NetworkType.connected),
+        existingWorkPolicy: ExistingWorkPolicy.replace,
+        backoffPolicy: BackoffPolicy.linear,
+        backoffPolicyDelay: const Duration(minutes: 5),
+      );
+    } catch (_) {
+      unawaited(
+        runDownload(
+          release: release,
+          episode: episode,
+          stream: stream,
+          batch: batch,
+          cancelToken: cancelToken,
+        ),
+      );
+    }
+  }
+
+  Future<void> startBatchDownload({
+    required DreamRelease release,
+    required List<DreamEpisodeDownloadRequest> requests,
+  }) async {
+    if (requests.isEmpty) return;
+
+    final batch = DownloadBatch(
+      id: 'release_${release.id}_${DateTime.now().millisecondsSinceEpoch}',
+      title: release.title,
+      episodeIds: requests.map((request) => request.episode.id).toSet(),
     );
+
+    for (final request in requests) {
+      await _database.saveDownloadedEpisode(
+        DownloadedEpisodesCompanion(
+          releaseId: Value(release.id),
+          episodeId: Value(request.episode.id),
+          releaseTitle: Value(release.title),
+          episodeTitle: Value(request.episode.title),
+          posterUrl: Value(release.posterUrl),
+          episodeOrdinal: Value(request.episode.ordinal),
+          localFilePath: const Value(''),
+          fileSize: const Value(0),
+          downloadedBytes: const Value(0),
+          status: const Value('pending'),
+          streamQuality: Value(request.stream.quality),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+    }
+
+    await DownloadNotificationService.showBatchProgress(
+      batchId: batch.id,
+      title: batch.title,
+      completed: 0,
+      failed: 0,
+      total: batch.episodeIds.length,
+    );
+
+    try {
+      await Workmanager().registerOneOffTask(
+        '$_downloadBatchTaskUniquePrefix${release.id}_${batch.id}',
+        downloadEpisodeBatchTaskName,
+        inputData: _batchTaskInputData(
+          release: release,
+          requests: requests,
+          batch: batch,
+        ),
+        constraints: Constraints(networkType: NetworkType.connected),
+        existingWorkPolicy: ExistingWorkPolicy.replace,
+        backoffPolicy: BackoffPolicy.linear,
+        backoffPolicyDelay: const Duration(minutes: 5),
+      );
+    } catch (_) {
+      unawaited(
+        runBatchDownload(
+          release: release,
+          requests: requests,
+          batch: batch,
+          stopOnCancel: false,
+        ),
+      );
+    }
   }
 
   Future<void> cancelDownload(int releaseId, String episodeId) async {
     final key = _taskKey(releaseId, episodeId);
     final cancelToken = _activeCancelTokens.remove(key);
     cancelToken?.cancel('User cancelled download');
+    await DownloadNotificationService.cancel(
+      releaseId: releaseId,
+      episodeId: episodeId,
+    );
     await deleteDownload(releaseId, episodeId);
   }
 
@@ -70,6 +180,10 @@ final class DownloadService {
       await _deleteLocalDownloadPath(record.localFilePath);
     }
     await _database.deleteDownloadedEpisode(releaseId, episodeId);
+    await DownloadNotificationService.cancel(
+      releaseId: releaseId,
+      episodeId: episodeId,
+    );
   }
 
   Future<void> deleteAllDownloads() async {
@@ -88,10 +202,11 @@ final class DownloadService {
 
   String _taskKey(int releaseId, String episodeId) => '${releaseId}_$episodeId';
 
-  Future<void> _runDownload({
+  Future<void> runDownload({
     required DreamRelease release,
     required DreamEpisode episode,
     required DreamStream stream,
+    DownloadBatch? batch,
     required CancelToken cancelToken,
   }) async {
     final key = _taskKey(release.id, episode.id);
@@ -230,6 +345,13 @@ final class DownloadService {
               downloadedBytes: Value(downloadedCount),
             ),
           );
+          await _showDownloadNotificationState(
+            release: release,
+            episode: episode,
+            batch: batch,
+            downloaded: downloadedCount,
+            total: playlist.segments.length,
+          );
           lastUpdateTime = now;
         }
       }
@@ -253,6 +375,12 @@ final class DownloadService {
           downloadedBytes: Value(downloadedSize),
         ),
       );
+      await _showDownloadNotificationState(
+        release: release,
+        episode: episode,
+        batch: batch,
+        completed: true,
+      );
     } catch (_) {
       if (tempPlaylist != null && await tempPlaylist.exists()) {
         try {
@@ -266,10 +394,99 @@ final class DownloadService {
           episode.id,
           const DownloadedEpisodesCompanion(status: Value('failed')),
         );
+        await _showDownloadNotificationState(
+          release: release,
+          episode: episode,
+          batch: batch,
+          failed: true,
+        );
       }
     } finally {
       _activeCancelTokens.remove(key);
     }
+  }
+
+  static Future<bool> runBackgroundTask(Map<String, dynamic>? inputData) async {
+    if (inputData == null) return false;
+
+    final database = AppDatabase();
+    try {
+      final service = DownloadService(database, _createBackgroundDio());
+      await service.runDownload(
+        release: _releaseFromInput(inputData),
+        episode: _episodeFromInput(inputData),
+        stream: _streamFromInput(inputData),
+        batch: _batchFromInput(inputData),
+        cancelToken: CancelToken(),
+      );
+      return true;
+    } finally {
+      await database.close();
+    }
+  }
+
+  static Future<bool> runBackgroundBatchTask(
+    Map<String, dynamic>? inputData,
+  ) async {
+    if (inputData == null) return false;
+
+    final database = AppDatabase();
+    try {
+      final service = DownloadService(database, _createBackgroundDio());
+      await service.runBatchDownload(
+        release: _releaseFromInput(inputData),
+        requests: _downloadRequestsFromInput(inputData),
+        batch: _batchFromInput(inputData),
+        stopOnCancel: true,
+      );
+      return true;
+    } finally {
+      await database.close();
+    }
+  }
+
+  Future<void> runBatchDownload({
+    required DreamRelease release,
+    required List<DreamEpisodeDownloadRequest> requests,
+    required DownloadBatch? batch,
+    required bool stopOnCancel,
+  }) async {
+    for (final request in requests) {
+      final token = CancelToken();
+      final key = _taskKey(release.id, request.episode.id);
+      _activeCancelTokens[key] = token;
+
+      await runDownload(
+        release: release,
+        episode: request.episode,
+        stream: request.stream,
+        batch: batch,
+        cancelToken: token,
+      );
+
+      if (stopOnCancel && token.isCancelled) return;
+    }
+  }
+
+  static Dio _createBackgroundDio() {
+    return Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 45),
+        receiveTimeout: const Duration(seconds: 45),
+        sendTimeout: const Duration(seconds: 45),
+        followRedirects: true,
+        maxRedirects: 5,
+        headers: const {
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36',
+          'Accept':
+              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Referer': 'https://dreamerscast.com/',
+          'Origin': 'https://dreamerscast.com',
+        },
+      ),
+    );
   }
 
   Future<_DownloadedHlsResource> _downloadHlsResource({
@@ -298,6 +515,58 @@ final class DownloadService {
       sourcePath: sourcePath,
       localName: localName,
       bytes: bytes.length,
+    );
+  }
+
+  Future<void> _showDownloadNotificationState({
+    required DreamRelease release,
+    required DreamEpisode episode,
+    required DownloadBatch? batch,
+    int downloaded = 0,
+    int total = 0,
+    bool completed = false,
+    bool failed = false,
+  }) async {
+    if (batch == null) {
+      if (completed) {
+        await DownloadNotificationService.showCompleted(
+          release: release,
+          episode: episode,
+        );
+      } else if (failed) {
+        await DownloadNotificationService.showFailed(
+          release: release,
+          episode: episode,
+        );
+      } else {
+        await DownloadNotificationService.showProgress(
+          release: release,
+          episode: episode,
+          downloaded: downloaded,
+          total: total,
+        );
+      }
+      return;
+    }
+
+    final downloads = await _database.allDownloadedEpisodes();
+    final batchEpisodes = downloads.where(
+      (download) =>
+          download.releaseId == release.id &&
+          batch.episodeIds.contains(download.episodeId),
+    );
+    final completedCount = batchEpisodes
+        .where((download) => download.status == 'completed')
+        .length;
+    final failedCount = batchEpisodes
+        .where((download) => download.status == 'failed')
+        .length;
+    await DownloadNotificationService.showBatchProgress(
+      batchId: batch.id,
+      title: batch.title,
+      completed: completedCount,
+      failed: failedCount,
+      total: batch.episodeIds.length,
     );
   }
 
@@ -432,6 +701,211 @@ final class DownloadService {
   String _safeFilePart(String value) {
     return value.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
   }
+
+  static Map<String, dynamic> _taskInputData({
+    required DreamRelease release,
+    required DreamEpisode episode,
+    required DreamStream stream,
+    DownloadBatch? batch,
+  }) {
+    return {
+      'releaseId': release.id,
+      'releaseTitle': release.title,
+      'releaseOriginalTitle': release.originalTitle,
+      'releaseUrl': release.url,
+      if (release.posterUrl != null) 'releasePosterUrl': release.posterUrl!,
+      'episodeId': episode.id,
+      'episodeReleaseId': episode.releaseId,
+      'episodeOrdinal': episode.ordinal,
+      'episodeTitle': episode.title,
+      'episodeFile': episode.file,
+      'streamId': stream.id,
+      'streamReleaseId': stream.releaseId,
+      'streamEpisodeId': stream.episodeId,
+      'streamUrl': stream.url.toString(),
+      'streamType': stream.type.name,
+      'streamQuality': stream.quality,
+      'streamHeadersJson': jsonEncode(stream.headers),
+      if (batch != null) 'batchId': batch.id,
+      if (batch != null) 'batchTitle': batch.title,
+      if (batch != null) 'batchEpisodeIdsJson': jsonEncode(batch.episodeIds),
+    };
+  }
+
+  static Map<String, dynamic> _batchTaskInputData({
+    required DreamRelease release,
+    required List<DreamEpisodeDownloadRequest> requests,
+    required DownloadBatch batch,
+  }) {
+    return {
+      'releaseId': release.id,
+      'releaseTitle': release.title,
+      'releaseOriginalTitle': release.originalTitle,
+      'releaseUrl': release.url,
+      if (release.posterUrl != null) 'releasePosterUrl': release.posterUrl!,
+      'batchId': batch.id,
+      'batchTitle': batch.title,
+      'batchEpisodeIdsJson': jsonEncode(batch.episodeIds.toList()),
+      'downloadRequestsJson': jsonEncode(
+        requests.map((request) => _downloadRequestToJson(request)).toList(),
+      ),
+    };
+  }
+
+  static Map<String, Object?> _downloadRequestToJson(
+    DreamEpisodeDownloadRequest request,
+  ) {
+    return {
+      'episode': {
+        'id': request.episode.id,
+        'releaseId': request.episode.releaseId,
+        'ordinal': request.episode.ordinal,
+        'title': request.episode.title,
+        'file': request.episode.file,
+        'label': request.episode.label,
+        'thumbnailUrl': request.episode.thumbnailUrl,
+        'embedUrl': request.episode.embedUrl,
+        'vars': request.episode.vars,
+      },
+      'stream': {
+        'id': request.stream.id,
+        'releaseId': request.stream.releaseId,
+        'episodeId': request.stream.episodeId,
+        'url': request.stream.url.toString(),
+        'type': request.stream.type.name,
+        'quality': request.stream.quality,
+        'headers': request.stream.headers,
+        'expiresAt': request.stream.expiresAt?.toIso8601String(),
+      },
+    };
+  }
+
+  static DreamRelease _releaseFromInput(Map<String, dynamic> input) {
+    return DreamRelease(
+      id: input['releaseId'] as int,
+      title: input['releaseTitle'] as String,
+      originalTitle: input['releaseOriginalTitle'] as String? ?? '',
+      url: input['releaseUrl'] as String? ?? '',
+      posterUrl: input['releasePosterUrl'] as String?,
+    );
+  }
+
+  static DreamEpisode _episodeFromInput(Map<String, dynamic> input) {
+    return DreamEpisode(
+      id: input['episodeId'] as String,
+      releaseId: input['episodeReleaseId'] as int,
+      ordinal: input['episodeOrdinal'] as int,
+      title: input['episodeTitle'] as String,
+      file: input['episodeFile'] as String,
+    );
+  }
+
+  static DreamStream _streamFromInput(Map<String, dynamic> input) {
+    final headersJson = input['streamHeadersJson'] as String? ?? '{}';
+    final headers = (jsonDecode(headersJson) as Map<String, dynamic>).map(
+      (key, value) => MapEntry(key, '$value'),
+    );
+
+    return DreamStream(
+      id: input['streamId'] as String,
+      releaseId: input['streamReleaseId'] as int,
+      episodeId: input['streamEpisodeId'] as String,
+      url: Uri.parse(input['streamUrl'] as String),
+      type: DreamStreamType.values.firstWhere(
+        (type) => type.name == input['streamType'],
+        orElse: () => DreamStreamType.hls,
+      ),
+      quality: input['streamQuality'] as int,
+      headers: headers,
+    );
+  }
+
+  static DownloadBatch? _batchFromInput(Map<String, dynamic> input) {
+    final id = input['batchId'] as String?;
+    if (id == null || id.isEmpty) return null;
+    final episodeIdsJson = input['batchEpisodeIdsJson'] as String? ?? '[]';
+    return DownloadBatch(
+      id: id,
+      title: input['batchTitle'] as String? ?? 'Серии',
+      episodeIds: (jsonDecode(episodeIdsJson) as List<dynamic>)
+          .map((value) => '$value')
+          .toSet(),
+    );
+  }
+
+  static List<DreamEpisodeDownloadRequest> _downloadRequestsFromInput(
+    Map<String, dynamic> input,
+  ) {
+    final raw = input['downloadRequestsJson'] as String? ?? '[]';
+    final decoded = jsonDecode(raw) as List<dynamic>;
+    return decoded
+        .whereType<Map<String, dynamic>>()
+        .map(_downloadRequestFromJson)
+        .toList();
+  }
+
+  static DreamEpisodeDownloadRequest _downloadRequestFromJson(
+    Map<String, dynamic> json,
+  ) {
+    final episodeJson = json['episode'] as Map<String, dynamic>;
+    final streamJson = json['stream'] as Map<String, dynamic>;
+    final headers = (streamJson['headers'] as Map<String, dynamic>? ?? {}).map(
+      (key, value) => MapEntry(key, '$value'),
+    );
+
+    return DreamEpisodeDownloadRequest(
+      episode: DreamEpisode(
+        id: episodeJson['id'] as String,
+        releaseId: episodeJson['releaseId'] as int,
+        ordinal: episodeJson['ordinal'] as int,
+        title: episodeJson['title'] as String,
+        file: episodeJson['file'] as String,
+        label: episodeJson['label'] as String?,
+        thumbnailUrl: episodeJson['thumbnailUrl'] as String?,
+        embedUrl: episodeJson['embedUrl'] as String?,
+        vars: (episodeJson['vars'] as Map<String, dynamic>? ?? {}).map(
+          (key, value) => MapEntry(key, '$value'),
+        ),
+      ),
+      stream: DreamStream(
+        id: streamJson['id'] as String,
+        releaseId: streamJson['releaseId'] as int,
+        episodeId: streamJson['episodeId'] as String,
+        url: Uri.parse(streamJson['url'] as String),
+        type: DreamStreamType.values.firstWhere(
+          (type) => type.name == streamJson['type'],
+          orElse: () => DreamStreamType.hls,
+        ),
+        quality: streamJson['quality'] as int,
+        headers: headers,
+        expiresAt: streamJson['expiresAt'] == null
+            ? null
+            : DateTime.tryParse(streamJson['expiresAt'] as String),
+      ),
+    );
+  }
+}
+
+final class DreamEpisodeDownloadRequest {
+  const DreamEpisodeDownloadRequest({
+    required this.episode,
+    required this.stream,
+  });
+
+  final DreamEpisode episode;
+  final DreamStream stream;
+}
+
+final class DownloadBatch {
+  const DownloadBatch({
+    required this.id,
+    required this.title,
+    required this.episodeIds,
+  });
+
+  final String id;
+  final String title;
+  final Set<String> episodeIds;
 }
 
 final class _DownloadedHlsResource {
